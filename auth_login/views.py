@@ -124,8 +124,8 @@ class ProviderDataAPIView(generics.ListAPIView):
 class ProviderCreateAccountAPIView(generics.CreateAPIView):
     queryset=Provider.objects.all()
     serializer_class = ProviderCreateAccountSerializer
-    authentication_classes = []  # Disable authentication
-    permission_classes = []  # Disable permission checks
+    # authentication_classes = []  # Disable authentication
+    # permission_classes = []  # Disable permission checks
     
     def perform_create(self, serializer):
         serializer.validated_data['password'] = make_password(serializer.validated_data['password'])
