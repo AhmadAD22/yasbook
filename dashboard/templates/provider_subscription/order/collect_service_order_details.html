@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% block title %} service Orders {% endblock %}
+
+{% block content %}
+<script>
+  function selectAllCheckboxes() {
+    var checkboxes = document.getElementsByName('collected_service_orders');
+    var selectAllCheckbox = document.getElementById('select-all-checkbox');
+    var isChecked = selectAllCheckbox.checked;
+    
+    for (var i = 0; i < checkboxes.length; i++) {
+      checkboxes[i].checked = isChecked;
+    }
+  }
+</script>
+
+<h3 class="text-center main-color-text">Collect services Money</h3>
+
+<h5 class="">Total services: {{ total_services }}</h5>
+<h5 class="">Total Quantity: {{ service_statistics.orders_counts }}</h5>
+<h5 class="">Profit: {{ service_statistics.profit }}</h5>
+
+<form method="post" action="{% url "collect_servce_order" providersubscription.id %}">
+  {% csrf_token %}
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Service Order</th>
+            <th>Customer</th>
+            <th>Specialist</th>
+            <th>Date</th>
+            <th>Duration</th>
+            <th>Accept</th>
+            <th>Collected</th>
+        <th>Collecte</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for service_order in service_orders %}
+        <tr>
+            <td>{{ service_order }}</td>
+            <td>{{ service_order.customer }}</td>
+            <td>{{ service_order.specialist.name }}</td>
+            <td>{{ service_order.date }}</td>
+            <td>{{ service_order.duration }}</td>
+            <td>{{ service_order.accept }}</td>
+            <td>{{ service_order.collected }}</td>
+          <td>
+            <input type="checkbox" name="collected_service_orders" value="{{ service_order.id }}" {% if service_order.collected %}checked{% endif %}>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <label>
+    <input type="checkbox" id="select-all-checkbox" onclick="selectAllCheckboxes()"> Select All
+  </label>
+  <button type="submit" class="btn btn-primary">Update Collected Status</button>
+</form>
+
+{% endblock %}
