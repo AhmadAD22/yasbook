@@ -1,4 +1,3 @@
-from django.shortcuts import render
 from django.http import HttpResponseRedirect
 from django.urls import reverse
 from .models import *
@@ -9,11 +8,17 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.authtoken.models import Token
-from rest_framework.response import Response
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import check_password,make_password
-
+from rest_framework.authentication import TokenAuthentication
 from provider_details.serializers import StoreForProviderWhenCreateSerializer
+from rest_framework.views import APIView
+
+def error_handler(e):
+    error_messages = {}
+    for field, errors in e.items():
+        error_messages["error"] = "("+field+ ") " + errors[0]
+    return error_messages
 
 # Create your views here.
 def redirect_to_admin(request):
@@ -22,22 +27,40 @@ def redirect_to_admin(request):
 
 #########  for customer views
 
-class CustomerDataAPIView(generics.ListAPIView):
-    serializer_class =CustomerSerializer
-    def get_queryset(self):
-         return Customer.objects.filter(id=self.request.user.pk)
-    
+class CustomerDataAPIView(generics.RetrieveAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = CustomerSerializer
+    queryset = Customer.objects.all()
 
-class CustomerCreateAccountAPIView(generics.CreateAPIView):
-    queryset=Customer.objects.all()
-    serializer_class = CustomerCreateAccountSerializer
+    def get_object(self):
+        return self.queryset.get(id=self.request.user.pk)
+
+# class CustomerCreateAccountAPIView(generics.CreateAPIView):
+#     queryset=Customer.objects.all()
+#     serializer_class = CustomerCreateAccountSerializer
+#     authentication_classes = []  # Disable authentication
+#     permission_classes = []  # Disable permission checks
+    
+#     def perform_create(self, serializer):
+#         try:
+#             serializer.validated_data['password'] = make_password(serializer.validated_data['password'])
+#             # Create the provider user
+#             customer = serializer.save()
+#         except ValidationError as e: 
+#             error=error_handler(e)
+#             return Response(error, status=status.HTTP_400_BAD_REQUEST)
+        
+class CustomerCreateAccountAPIView(APIView):
     authentication_classes = []  # Disable authentication
     permission_classes = []  # Disable permission checks
-    
-    def perform_create(self, serializer):
-        serializer.validated_data['password'] = make_password(serializer.validated_data['password'])
-        # Create the provider user
-        customer = serializer.save()
+    def post(self, request):
+        try:
+            serializer = CustomerCreateAccountSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except:
+             return Response(error_handler(serializer.errors), status=status.HTTP_400_BAD_REQUEST)
 
 
 
@@ -77,16 +100,19 @@ class CustomerPasswordUpdateAPIView(generics.UpdateAPIView):
     permission_classes = [IsAuthenticated]
 
     def update(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
         
-        customer = self.request.user
-        old_password = serializer.validated_data.get('old_password')
-        new_password = serializer.validated_data.get('new_password')
+        try:
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            customer = self.request.user
+            old_password = serializer.validated_data.get('old_password')
+            new_password = serializer.validated_data.get('new_password')
+        except:
+             return Response(error_handler(serializer.errors), status=status.HTTP_400_BAD_REQUEST)
 
         # Check if the old password is correct
         if not customer.check_password(old_password):
-            return Response({'detail': 'Invalid old password'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Invalid old password'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Update the password
         customer.set_password(new_password)
@@ -114,12 +140,20 @@ class CustomerAddressRetrieveUpdateDestroyAPIView(generics.UpdateAPIView):
 
 
 #########  for customer views
+from django.http import HttpResponse
 
-class ProviderDataAPIView(generics.ListAPIView):
-    serializer_class =ProviderSerializer
-    def get_queryset(self):
-         return Provider.objects.filter(id=self.request.user.pk)
-    
+class ProviderDataAPIView(generics.RetrieveAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+    serializer_class = ProviderSerializer
+
+    def get_object(self):
+        return Provider.objects.get(id=self.request.user.pk)
+
+    def list(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return HttpResponse(serializer.data, content_type='application/json; charset=utf-8')
     
 class ProviderCreateAccountAPIView(generics.CreateAPIView):
     queryset=Provider.objects.all()
@@ -131,7 +165,7 @@ class ProviderCreateAccountAPIView(generics.CreateAPIView):
         serializer.validated_data['password'] = make_password(serializer.validated_data['password'])
         # Create the provider user
         provider = serializer.save()
-        provider = serializer.save()
+        
 
         # Create the associated store
         store_data = {
@@ -150,7 +184,10 @@ class ProviderCreateAccountAPIView(generics.CreateAPIView):
 class ProviderAuthToken(ObtainAuthToken):
     def post(self, request, *args, **kwargs):
         serializer = self.serializer_class(data=request.data, context={'request': request})
-        serializer.is_valid(raise_exception=True)
+        try:
+            serializer.is_valid(raise_exception=True)
+        except serializers.ValidationError:
+            return Response({'error': 'Unable to log in with provided credentials'}, status=status.HTTP_400_BAD_REQUEST)
         username = serializer.validated_data['username']
         password = serializer.validated_data['password']
         
@@ -160,7 +197,7 @@ class ProviderAuthToken(ObtainAuthToken):
             provider=Provider.objects.get(username=user.username)
 
         except User.DoesNotExist:
-            return Response({'error': 'not provider account'})
+            return Response({'error': 'not provider account'}, status=status.HTTP_400_BAD_REQUEST)
         
         if check_password(password, user.password):
             if(provider.username ==user.username):
@@ -176,7 +213,7 @@ class ProviderAuthToken(ObtainAuthToken):
                 })
             
 
-        return Response({'error': 'Invalid credentials'})
+        return Response({'error': 'Invalid credentials'},status=status.HTTP_400_BAD_REQUEST)
     
 class ProviderPasswordUpdateAPIView(generics.UpdateAPIView):
     serializer_class = ProviderPasswordUpdateSerializer
@@ -204,9 +241,19 @@ class ProviderPasswordUpdateAPIView(generics.UpdateAPIView):
 class ProviderAddressRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Provider.objects.all()
     serializer_class = ProviderAddressSerializer
+    authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get_object(self):
         provider = Provider.objects.get(pk=self.request.user.id)
         return provider
 ########### end customer
+class ProviderInfoRetrieveUpdateAPIView(generics.RetrieveUpdateAPIView):
+    queryset = Provider.objects.all()
+    serializer_class = ProviderInfoSerializer
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        provider = Provider.objects.get(pk=self.request.user.id)
+        return provider

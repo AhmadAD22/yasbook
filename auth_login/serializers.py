@@ -12,9 +12,10 @@ class CustomerSerializer(serializers.ModelSerializer):
 
 
 class CustomerCreateAccountSerializer(serializers.ModelSerializer):
+    
     class Meta:
         model = Customer
-        fields = ['id','name','username','phone', 'password']
+        fields = ['id','name','username','email','phone', 'password']
         extra_kwargs = {
             'password': {'write_only': True},  # Ensure password field is write-only
         }
@@ -61,3 +62,7 @@ class ProviderAddressSerializer(serializers.ModelSerializer):
         fields = ['latitude','longitude','address']
 
 #### end customer
+class ProviderInfoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Provider
+        fields = ['name','email',]

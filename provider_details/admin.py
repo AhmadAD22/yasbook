@@ -171,12 +171,26 @@ class ServiceAdmin(admin.ModelAdmin):
 
     fieldsets = (
         ('Service Information', {
-            'fields': ('store', 'main_service', 'name', 'description', 'price', 'offers', 'hours_Service')
+            'fields': ('store', 'main_service', 'name', 'description', 'price', 'offers', 'duration')
         }),
         ('Image and Dates', {
-            'fields': ('image_display', 'created_at', 'updated_on'),
+            'fields': ( 'created_at', 'updated_on','image_display'),
             'classes': ('collapse',)
         }),
     )
 
 admin.site.register(Service, ServiceAdmin)
+# admin.site.register(StoreSpecialist)
+# admin.site.register(StoreOpening)
+# # admin.site.register(SpecialistWorks)
+# admin.site.register(StoreGallery)
+admin.site.register(StoreAdminServices)
+# admin.site.register(FollowingStore)
+
+
+
+
+
+# admin.site.register(StoreGalleryInline)
+
+

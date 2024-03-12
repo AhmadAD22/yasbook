@@ -11,4 +11,5 @@ class MainServiceSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = MainService
-        fields = '__all__'
+        exclude =['created_at','updated_on']
+        

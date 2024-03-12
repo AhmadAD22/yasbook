@@ -9,13 +9,14 @@ https://docs.djangoproject.com/en/4.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
-
+import os
+import sys
 from pathlib import Path
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
+BASE_DIR2 = Path(__file__).resolve().parent
+sys.path.insert(0, os.path.join(BASE_DIR2, ''))
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
@@ -28,11 +29,18 @@ DEBUG = True
 ALLOWED_HOSTS = ['*']
 AUTH_USER_MODEL = 'auth_login.MyUser'
 
+AUTHENTICATION_BACKENDS = [
+    'auth_login.custom_auth_backend.AdminUserBackend',
+    'django.contrib.auth.backends.ModelBackend',
+    # Add other authentication backends if needed
+]
+
 
 # Application definition
 
 INSTALLED_APPS = [
     # 'admin_material.apps.AdminMaterialDashboardConfig',
+    'daphne',
     "admin_interface",
     "colorfield", 
     'django.contrib.admin',
@@ -45,34 +53,47 @@ INSTALLED_APPS = [
     'auth_login',
     'provider_details',
     'order_cart',
+    'notification',
     'rest_framework',
     'rest_framework.authtoken',
-        'corsheaders',
+    'corsheaders',
+    'channels',
+    'dashboard',
+    
 
 
 ]
 
-# REST_FRAMEWORK = {
-#     'DEFAULT_AUTHENTICATION_CLASSES': [
-#         # 'rest_framework.authentication.SessionAuthentication',
-#         # 'rest_framework.authentication.TokenAuthentication',
-#     ],
+ASGI_APPLICATION='yas_book.asgi.application'
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',  # or use Redis or another backend
+    },
+}
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        # 'rest_framework.authentication.SessionAuthentication',
+         'rest_framework.authentication.TokenAuthentication',
+    ],
 #     'DEFAULT_PERMISSION_CLASSES': [
 #         'rest_framework.permissions.AllowAny',
 #     ],
 #     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
 #     'PAGE_SIZE': 20,
-# }
+}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
+    # 'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'corsheaders.middleware.CorsMiddleware',
+    "django.middleware.common.CommonMiddleware",
+
 
 ]
 
@@ -142,12 +163,12 @@ import os
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 
 STATIC_DIR = os.path.join(BASE_DIR, 'static')
 STATIC_ROOT = os.path.join(STATIC_DIR, 'static_root')
 STATICFILES_DIRS = [
-    os.path.join(STATIC_DIR, 'static_files'),
+    os.path.join(BASE_DIR, 'static'),
 ]
 
 MEDIA_URL = '//'
@@ -158,3 +179,9 @@ MEDIA_ROOT = os.path.join(BASE_DIR, '')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CORS_ORIGIN_ALLOW_ALL=True
+
+
+EMAIL_HOST = 'sandbox.smtp.mailtrap.io'
+EMAIL_HOST_USER = 'ab8518d9c6f1ea'
+EMAIL_HOST_PASSWORD = 'c36ea95347fcc2'
+EMAIL_PORT = '2525'

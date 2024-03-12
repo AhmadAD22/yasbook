@@ -6,6 +6,19 @@ from .serializers import *
 from auth_login.models import *
 from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
+from rest_framework.response import Response
+from django.core.mail import send_mail
+from django.conf import settings
+from rest_framework.views import APIView
+from rest_framework import status
+from .geographic import get_nearest_store
+from rest_framework.exceptions import ValidationError
+from django.db.models import Count
+from auth_login.views import error_handler
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
+from notification.models import Notification
+
 
 
 ### for provider app
@@ -18,19 +31,26 @@ class StoreUpdateView(generics.RetrieveUpdateAPIView):
         provider=Provider.objects.get(username=self.request.user.username)
         return Store.objects.get(provider=provider)
     
-class StoreSpecialistListCreateView(generics.ListCreateAPIView):
+
+    
+class StoreSpecialistListCreateView(APIView):
     serializer_class = StoreSpecialistSerializer
     permission_classes = [IsAuthenticated]
 
-    def get_queryset(self):
-        provider=Provider.objects.get(username=self.request.user.username)
+    def get(self, request, format=None):
+        provider = Provider.objects.get(username=request.user.username)
+        queryset = StoreSpecialist.objects.filter(store__provider=provider)
+        serializer = self.serializer_class(queryset, many=True)
+        return Response(serializer.data)
 
-        return StoreSpecialist.objects.filter(store__provider=provider)
-
-    def perform_create(self, serializer):
-        provider=Provider.objects.get(username=self.request.user.username)
-        store=Store.objects.get(provider=provider)
-        serializer.save(store=store)
+    def post(self, request, format=None):
+        provider = Provider.objects.get(username=request.user.username)
+        store = Store.objects.get(provider=provider)
+        serializer = self.serializer_class(data=request.data)
+        if serializer.is_valid():
+            serializer.save(store=store)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(error_handler(serializer.errors), status=status.HTTP_400_BAD_REQUEST)
 
 class StoreSpecialistRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = StoreSpecialist.objects.all()
@@ -77,38 +97,106 @@ class StoreGalleryRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIVie
     permission_classes = [IsAuthenticated]
 
 
-
-class ServiceListCreateView(generics.ListCreateAPIView):
-    serializer_class = ServiceSerializer
+class ServiceListCreateView(APIView):
     permission_classes = [IsAuthenticated]
+    
+    def get_serializer_class(self):
+        return ServiceSerializer
+    
+    def get(self, request, format=None):
+        provider = Provider.objects.get(username=request.user.username)
+        # Check if the provider have subscription or not  
+        try:
+            provider_subscription=ProviderSubscription.objects.get(provider=provider)
+            if (provider_subscription.is_duration_finished()):
+                return Response({'error':'Your subscription duration is finished'})
+        except:
+            return Response({'error':'You do not have subscription'})
+        services = Service.objects.filter(store__provider=provider)
+        serializer = ServiceSerializer(services, many=True)
+        return Response(serializer.data)
 
-    def get_queryset(self):
-        provider = Provider.objects.get(username=self.request.user.username)
-        return Service.objects.filter(store__provider=provider)
-
-    def perform_create(self, serializer):
-        provider = Provider.objects.get(username=self.request.user.username)
+    def post(self, request, format=None):
+        provider = Provider.objects.get(username=request.user.username)
         store = Store.objects.get(provider=provider)
-        serializer.save(store=store)
+        # Check if the provider have subscription or not  
+        try:
+          subscription=ProviderSubscription.objects.get(provider=provider)
+          if (subscription.is_duration_finished()):
+                return Response({'error':'Your subscription duration is finished'})
+        except:
+            error_messages={"error":"You do not have a subscription"}
+            return Response(error_messages, status=status.HTTP_400_BAD_REQUEST)
+        serializer = ServiceSerializer(data=request.data)
+        if serializer.is_valid():
+                if(request.data.get('price')):
+                    price = request.data.get('price')  # Assuming price is in the request data
+                    calculated_price = float(price) + subscription.service_profit
+                    serializer.save(store=store, price=calculated_price)
+                else:
+                    calculated_price=float(subscription.service_profit)
+                    serializer.save(store=store, price=calculated_price)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(error_handler(serializer.errors), status=status.HTTP_400_BAD_REQUEST)
+
 
 class ServiceRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Service.objects.all()
     serializer_class = ServiceSerializer
     permission_classes = [IsAuthenticated]
-
-
-class ProductListCreateView(generics.ListCreateAPIView):
-    serializer_class = ProductSerializer
+    
+class ProductListCreateView(APIView):
     permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        provider = Provider.objects.get(username=request.user.username)
+        # Check if the provider have subscription or not  
+        try:
+          subscription=ProviderSubscription.objects.get(provider=provider)
+          if (subscription.is_duration_finished()):
+                return Response({'error':'Your subscription duration is finished'})
+        except:
+            error_messages={"error":"You do not have a subscription"}
+            return Response(error_messages, status=status.HTTP_400_BAD_REQUEST)
+        # Check if the provider have a products subscription or not 
+        if subscription.store_subscription:
+            products = Product.objects.filter(store__provider=provider)
+            serializer = ProductSerializer(products, many=True)
+            return Response(serializer.data)
+        error_messages={"error":"You do not have a product subscription"}
+        return Response(error_messages, status=status.HTTP_400_BAD_REQUEST)
 
-    def get_queryset(self):
-        provider = Provider.objects.get(username=self.request.user.username)
-        return Product.objects.filter(store__provider=provider)
-
-    def perform_create(self, serializer):
-        provider = Provider.objects.get(username=self.request.user.username)
+    def post(self, request):
+        provider = Provider.objects.get(username=request.user.username)
         store = Store.objects.get(provider=provider)
-        serializer.save(store=store)
+        # Check if the provider have subscription or not  
+        try:
+          subscription=ProviderSubscription.objects.get(provider=provider)
+          if (subscription.is_duration_finished()):
+                return Response({'error':'Your subscription duration is finished'})
+        except:
+            error_messages={"error":"You do not have a subscription"}
+            return Response(error_messages, status=status.HTTP_400_BAD_REQUEST)
+        # Check if the provider have a products subscription or not 
+        if subscription.store_subscription:# Store here is products subscription
+            serializer = ProductSerializer(data=request.data)
+            if serializer.is_valid():
+                if(request.data.get('price')):
+                    price = request.data.get('price')  # Assuming price is in the request data
+                    calculated_price = float(price) + subscription.product_profit
+                    serializer.save(store=store, price=calculated_price)
+                else:
+                    calculated_price=float(subscription.product_profit)
+                    serializer.save(store=store, price=calculated_price)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+                
+            
+            return Response(error_handler(serializer.errors), status=status.HTTP_400_BAD_REQUEST)
+        error_messages={"error":"You do not have a product subscription"}
+        return Response(error_messages, status=status.HTTP_400_BAD_REQUEST)
+
+
+
 
 class ProductRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Product.objects.all()
@@ -118,19 +206,25 @@ class ProductRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
 
 
 
-class ReviewsListCreateView(generics.ListCreateAPIView):
+class ReviewsListCreateAPIView(APIView):
     serializer_class = ReviewsSerializer
     permission_classes = [IsAuthenticated]
 
-    def get_queryset(self):
+    def get(self, request, format=None):
         # Assuming you want reviews related to the authenticated user's store
-        customer=Customer.objects.get(username=self.request.user.username)
-        return Reviews.objects.filter(customer=customer)
+        customer = Customer.objects.get(username=request.user.username)
+        reviews = Reviews.objects.filter(customer=customer)
+        serializer = self.serializer_class(reviews, many=True)
+        return Response(serializer.data)
 
-    def perform_create(self, serializer):
+    def post(self, request, format=None):
         # Assuming you want to associate the review with the authenticated user's store
-        customer=Customer.objects.get(username=self.request.user.username)
-        serializer.save(customer=customer)
+        customer = Customer.objects.get(username=request.user.username)
+        serializer = self.serializer_class(data=request.data)
+        if serializer.is_valid():
+            serializer.save(customer=customer)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(error_handler(serializer.errors), status=status.HTTP_400_BAD_REQUEST)
 
 class ReviewsRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Reviews.objects.all()
@@ -149,9 +243,6 @@ class StoreDetailView(generics.RetrieveAPIView):
     authentication_classes=[]
 
 
-# from rest_framework import generics
-# from .models import Service
-# from .serializers import ServiceSerializer
 
 class ServiceListByStoreAndMainServiceView(generics.ListAPIView):
     serializer_class = ServiceSerializer
@@ -161,6 +252,17 @@ class ServiceListByStoreAndMainServiceView(generics.ListAPIView):
         store_id = self.kwargs['store_id']
         main_service_id = self.kwargs['main_service_id']
         return Service.objects.filter(store_id=store_id, main_service=main_service_id)
+    
+class ServiceListByMainServiceView(generics.ListAPIView):
+    serializer_class = ServiceSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        provider = Provider.objects.get(username=self.request.user.username)
+        store = Store.objects.get(provider=provider)
+        main_service_id = self.kwargs['main_service_id']
+        return Service.objects.filter(store=store, main_service=main_service_id)
+
 
 
 class StoreListByMainServiceView(generics.ListAPIView):
@@ -206,12 +308,118 @@ class FollowingStoreDeleteView(generics.DestroyAPIView):
     def get_object(self):
         queryset = self.get_queryset()
         return get_object_or_404(queryset, store_id=self.kwargs['store_id'])
+    
+#Salon page 
+class FeaturedStoreNearbyStoreOrderAndStoryView(APIView):
 
+    permission_classes = [IsAuthenticated]
+    def get(self, request, *args, **kwargs):
+        provider_subscripted_ids=[]
+        subscriptions=ProviderSubscription.objects.all()
+        for subscription in subscriptions:
+            if(not subscription.is_duration_finished()):
+                provider_subscripted_ids.append(subscription.provider.id)
+        subscripted_stores=Store.objects.filter(provider__id__in=provider_subscripted_ids).values_list('id', flat=True)
+        main_service_id = self.kwargs['main_service_id']
+        ####featured stores by number of followes######
+        #list stores ids that have the main_service_id
+        stores_have_selected_main_service_ides = StoreAdminServices.objects.filter(main_service=main_service_id).values_list('store_id', flat=True)
+        # Convert the QuerySet to a set for intersection
+        stores_have_selected_main_service_ides = set(stores_have_selected_main_service_ides)
+        subscripted_stores=set(subscripted_stores)
+        # Perform the intersection that ensures that Fetch subscripted stores that have the indicated main_service
+        filtered_stores = subscripted_stores.intersection(stores_have_selected_main_service_ides)
+        #Get ordered featured stores by number of followes
+        featuredstores=Store.objects.filter(id__in=filtered_stores).annotate(num_followers=models.Count('followingstore')).order_by('-num_followers')
+        featuredstoresserializer=NearbyFeaturedStoreOrderSerializer(featuredstores,many=True)
+        ####nearest_stores######
+        #Get nearest_stores by customer location and stores ids that have the main_service_id
+        customer=Customer.objects.get(username=self.request.user.username)
+        try:
+        #Get customer for nearby stores
+            nearbystores=get_nearest_store(customer_latitude=customer.latitude,customer_longitude=customer.longitude,store_ids=filtered_stores)
+        except:
+            return Response({'error': 'Yor location undefined'}, status=status.HTTP_400_BAD_REQUEST)
+        #Get Most ordred for main_srvice
+        main_srvice=MainService.objects.filter(id=self.kwargs['main_service_id']).first()
+        main_service_counts = MainService.objects.filter(category=main_srvice.category).annotate(count=Count('service__serviceorder__customer', distinct=True)).order_by('-count')
+        main_service_data = [
+            {
+                'name': main_service.name,
+                'count': main_service.count,
+                'image': main_service.image.url if main_service.image else None,
+            }
+            for main_service in main_service_counts
+                            ]
+        #Get latest images belonging to stores that the customer follow it
+        following_stores = FollowingStore.objects.filter(customer=customer)
+
+        latest_images = []
+        for following_store in following_stores:
+            store = following_store.store
+            try:
+                latest_image = StoreGallery.objects.filter(store=store).latest('created_at')
+                latest_image_serializer=StoreGallerySerializer(latest_image)
+                latest_images.append({'store_id': store.id, 'store_name': store.name, 'latest_image': latest_image_serializer.data})
+            except StoreGallery.DoesNotExist:
+                # Skip adding store name and ID if StoreGallery.DoesNotExist exception is raised
+                continue
+
+        return Response({'featured_stores':featuredstoresserializer.data, 'nearby_stores':nearbystores, 'most_search_interest':main_service_data, 'story':latest_images})
+    
+
+class NearbyStoreOrderByMainServiceView(APIView):
+
+    permission_classes = [IsAuthenticated]
+    def post(self, request, *args, **kwargs):
+        main_service_ids=request.data.get('main_service_ids')
+        customer=Customer.objects.get(username=self.request.user.username)
+        provider_subscripted_ids=[]
+        subscriptions=ProviderSubscription.objects.all()
+        for subscription in subscriptions:
+            if(not subscription.is_duration_finished()):
+                provider_subscripted_ids.append(subscription.provider.id)
+        subscripted_stores=Store.objects.filter(provider__id__in=provider_subscripted_ids).values_list('id', flat=True)
+        ####featured stores by number of followes######
+        #list stores ids that have the main_service_id
+        stores_have_selected_main_service_ides = StoreAdminServices.objects.filter(main_service__in=main_service_ids).values_list('store_id', flat=True)
+        # Convert the QuerySet to a set for intersection
+        stores_have_selected_main_service_ides = set(stores_have_selected_main_service_ides)
+        subscripted_stores=set(subscripted_stores)
+        # Perform the intersection that ensures that Fetch subscripted stores that have the indicated main_service
+        filtered_stores = subscripted_stores.intersection(stores_have_selected_main_service_ides)
+        #Get ordered featured stores by number of followes
+        try:
+        #Get customer for nearby stores
+            nearbystores=get_nearest_store(customer_latitude=customer.latitude,customer_longitude=customer.longitude,store_ids=filtered_stores)
+        except:
+            return Response({'error': 'Yor location undefined'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(nearbystores)   
+    
 class FeaturedStoreFollowersOrderView(generics.ListAPIView):
 
-    serializer_class = StoreADetailSerializer
+    serializer_class = NearbyFeaturedStoreOrderSerializer
 
     def get_queryset(self):
         main_service_id = self.kwargs['main_service_id']
         store_ids = StoreAdminServices.objects.filter(main_service=main_service_id).values_list('store_id', flat=True)
+        customer=Customer.objects.get(id=self.request.user.id)
         return  Store.objects.filter(id__in=store_ids).annotate(num_followers=models.Count('followingstore')).order_by('-num_followers')
+    
+class EmailSendingView(APIView):
+    def post(self, request):
+        subject = request.data.get('subject')
+        message = request.data.get('message')
+        # sender = request.data.get('sender')
+        # recipient = request.data.get('recipient')
+        user=MyUser.objects.get(id=request.user.id)
+        message="from: "+str( user.email)+"\n" + message
+        if not (message and subject):
+            return Response({'error': 'Missing required fields'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            send_mail(subject, message,"", ['ahmadadrah0@gmail.com'], fail_silently=False)
+            
+            return Response({'success': 'Email sent'}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

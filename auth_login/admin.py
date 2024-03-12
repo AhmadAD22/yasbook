@@ -11,7 +11,7 @@ from provider_details.models import Store
 
 
 class CustomerAdmin(UserAdmin):
-    list_display = ('name', 'phone', 'address')
+    list_display = ('name','username', 'phone', 'address')
     list_filter = ('is_active', 'is_staff')
     search_fields = ('name', 'phone', 'address')
     readonly_fields = ('latitude','longitude')
@@ -69,3 +69,19 @@ class AdminUserAdmin(UserAdmin):
     filter_horizontal = ('groups', 'user_permissions')
 
 admin.site.register(AdminUser, AdminUserAdmin)
+
+from django.contrib import admin
+from django.utils import timezone
+from django.http import HttpResponseRedirect
+from django.urls import reverse
+from django.utils.html import format_html
+
+class ProviderSubscriptionAdmin(admin.ModelAdmin):
+    readonly_fields = ('details',)
+
+    def details(self, obj):
+        return format_html('<a href="http://127.0.0.1:8000/">Clic to show more details</a>') 
+    details.short_description = 'Details'
+
+admin.site.register(ProviderSubscription, ProviderSubscriptionAdmin)
+admin.site.register(PromotionSubscription)

@@ -8,7 +8,7 @@ from django.conf.urls.static import static
 urlpatterns = [
     # path('', include('admin_material.urls')),
     path('admin/', admin.site.urls),
-    path("", redirect_to_admin, name="to_admin"),
+    # path("", redirect_to_admin, name="to_admin"),
 
 
     path('user/',include('auth_login.urls')),
@@ -16,8 +16,9 @@ urlpatterns = [
     path('category/',include('categroy.urls')),
 
     path('store/',include('provider_details.urls')),
-
     path('order/',include('order_cart.urls')),
+    path('notification/',include('notification.urls')),
+    path('dashboard/',include('dashboard.urls')),
 
 
 

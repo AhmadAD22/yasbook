@@ -8,7 +8,7 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 class Store(models.Model):
     provider = models.OneToOneField(Provider, on_delete=models.CASCADE)
     image = models.ImageField(upload_to='media/provider/store/',null=True,blank=True, verbose_name='رفع الصورة')
-    name = models.CharField(max_length=255, verbose_name='اسم المتجر',null=True,blank=True,)
+    name = models.CharField(max_length=255, verbose_name=' الإسم التجاري',null=True,blank=True,)
     about = models.TextField(blank=True, null=True, verbose_name='الوصف')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاريخ الإنشاء',blank=True,null=True)
     updated_on = models.DateTimeField(auto_now=True, verbose_name='تاريخ التحديث',blank=True,null=True)
@@ -20,6 +20,8 @@ class Store(models.Model):
                 os.remove(self.image.path)
         
         super(Store, self).delete(*args, **kwargs)
+    def __str__(self):
+        return self.provider.name
 
 
 class StoreAdminServices(models.Model):
@@ -31,8 +33,23 @@ class StoreAdminServices(models.Model):
 class StoreSpecialist(models.Model):
     store = models.ForeignKey(Store, on_delete=models.CASCADE)
     name = models.CharField(max_length=255, verbose_name='اسم الموظف',)
+    phone = models.CharField(max_length=9, verbose_name='رقم الهاتف',)
+    specialistworks=models.ManyToManyField(MainService)
+    image = models.ImageField(upload_to='media/provider/specialists/',null=True,blank=True, verbose_name='رفع الصورة')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاريخ الإنشاء',blank=True,null=True)
     updated_on = models.DateTimeField(auto_now=True, verbose_name='تاريخ التحديث',blank=True,null=True)
+    
+    def delete(self, *args, **kwargs):
+        # Delete the associated image file
+        if self.image:
+            if os.path.isfile(self.image.path):
+                os.remove(self.image.path)
+
+        # Call the delete method of the base class to perform the deletion
+        super(StoreSpecialist, self).delete(*args, **kwargs)
+    
+
+    
 
 class StoreOpening(models.Model):
     store = models.ForeignKey(Store, on_delete=models.CASCADE)
@@ -40,7 +57,7 @@ class StoreOpening(models.Model):
     time_start=models.TimeField(verbose_name='وقت البدء')
     time_end=models.TimeField(verbose_name='وقت الانتهاء')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاريخ الإنشاء',blank=True,null=True)
-    updated_on = models.DateTimeField(auto_now=True, verbose_name='تاريخ التحديث',blank=True,null=True)
+    updated_on =models.DateTimeField(auto_now=True, verbose_name='تاريخ التحديث',blank=True,null=True)
 
 class FollowingStore(models.Model):
     store = models.ForeignKey(Store, verbose_name='المتجر التابع له', on_delete=models.CASCADE)
@@ -81,7 +98,7 @@ class Service(models.Model):
     description = models.TextField(blank=True, null=True, verbose_name='الوصف')
     price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='السعر',null=True)
     offers = models.IntegerField(validators=[MinValueValidator(0), MaxValueValidator(100)], default=0,blank=False, verbose_name='الخصم')
-    hours_Service = models.TextField(blank=True, null=True, verbose_name='ساعات الخدمة')
+    duration= models.PositiveIntegerField(verbose_name='مدة الخدمة (بالدقائق)', blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاريخ الإنشاء',blank=True,null=True)
     updated_on = models.DateTimeField(auto_now=True, verbose_name='تاريخ التحديث',blank=True,null=True)
 
@@ -92,7 +109,7 @@ class Service(models.Model):
             if os.path.isfile(self.image.path):
                 os.remove(self.image.path)
         
-        super(StoreGallery, self).delete(*args, **kwargs)
+        super(Service, self).delete(*args, **kwargs)
 
 class Product(models.Model):
     store = models.ForeignKey(Store, on_delete=models.CASCADE)
@@ -112,7 +129,7 @@ class Product(models.Model):
             if os.path.isfile(self.image.path):
                 os.remove(self.image.path)
         
-        super(StoreGallery, self).delete(*args, **kwargs)
+        super(Product, self).delete(*args, **kwargs)
 
 
 class Reviews(models.Model):
@@ -124,4 +141,4 @@ class Reviews(models.Model):
 
 
     def __str__(self):
-        return f"Message by {self.customer.username} "
+        return f"Message by {self.customer.username}"

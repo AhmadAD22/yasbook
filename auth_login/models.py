@@ -2,6 +2,8 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from categroy.models import *
 from django.contrib.auth.hashers import make_password
+from datetime import datetime, timezone,date
+
 
 # from provider_details.models import Store
 
@@ -60,3 +62,82 @@ class AdminUser(MyUser):
     class Meta:
         verbose_name = 'Admin User'
         verbose_name_plural = 'Admin Users'
+        
+        
+
+
+from datetime import datetime, timedelta
+
+from django.db import models
+from datetime import timedelta, datetime
+from provider_details.models import Provider
+
+class ProviderSubscription(models.Model):
+    DURATION_CHOICES = (
+        (90, '90 days'),
+        (180, '180 days'),
+        (365, '365 days'),
+    )
+
+    provider = models.OneToOneField(Provider, verbose_name="provider", on_delete=models.CASCADE)
+    date = models.DateField(verbose_name="Subscription date")
+    duration_days = models.IntegerField(choices=DURATION_CHOICES, verbose_name="Duration")
+    service_profit = models.IntegerField(default=0, blank=False, verbose_name='service profit')
+    store_subscription = models.BooleanField(verbose_name='Store subscription', default=False)
+    product_profit = models.IntegerField(default=0, blank=True, verbose_name='product profit')
+
+    @property
+    def duration(self):
+        return timedelta(days=self.duration_days)
+
+    def remaining_duration(self):
+        current_date = datetime.now().date()
+        subscription_end_date = self.date + self.duration
+        remaining_days = (subscription_end_date - current_date).days
+        return max(remaining_days, 0)
+
+    def is_duration_finished(self):
+        current_date = datetime.now().date()
+        end_date = self.date + self.duration
+        return current_date > end_date
+    
+    
+    def __str__(self):
+        return self.provider.name + " Remaining:  "+str(self.remaining_duration())+ " Days, Finished: " + str(self.is_duration_finished())
+    
+
+
+class PromotionSubscription(models.Model):
+    DURATION_CHOICES = (
+        (3, '3 days'),
+        (7, '7 days'),
+        (15, '15 days'),
+        (30, '30 days'),
+        (45, '45 days'),
+        
+    )
+    
+    provider = models.OneToOneField(Provider, verbose_name="provider", on_delete=models.CASCADE)
+    promotion_date = models.DateField(blank=True, null=True, verbose_name="Promotion start date")
+    promotion_duration_days = models.IntegerField(choices=DURATION_CHOICES, verbose_name="Promotion Duration", blank=True, null=True)
+    profit = models.IntegerField(default=0, blank=True, verbose_name='product profit')
+
+    @property
+    def promotion_duration(self):
+        if self.promotion_duration_days:
+            return timedelta(days=self.promotion_duration_days)
+        return None
+
+    def remaining_duration(self):
+        if self.promotion_date and self.promotion_duration:
+            current_date = date.today()
+            promotion_end_date = self.promotion_date + self.promotion_duration
+            remaining_days = (promotion_end_date - current_date).days
+            return max(remaining_days, 0)
+        return None
+
+    def is_duration_finished(self):
+        remaining_duration = self.remaining_duration()
+        return remaining_duration == 0
+    def __str__(self):
+        return self.provider.name + " Remaining:  "+str(self.remaining_duration())+ " Days, Finished: " + str(self.is_duration_finished())

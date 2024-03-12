@@ -19,12 +19,31 @@ class StoreForProviderWhenCreateSerializer(serializers.ModelSerializer):
         model = Store
         fields = ['provider']
 
-
+class MainServiceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MainService
+        fields = ['id','name']
+        read_only_fields = ['name']
+        
 class StoreSpecialistSerializer(serializers.ModelSerializer):
+    specialistworks = serializers.PrimaryKeyRelatedField(many=True, queryset=MainService.objects.all())
     class Meta:
         model = StoreSpecialist
-        fields = ['id','name']
+        fields = ['id', 'name', 'phone','image', 'specialistworks']
+        
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        representation['specialistworks'] = MainServiceSerializer(instance.specialistworks.all(), many=True).data
+        return representation
+    # def destroy(self, request, *args, **kwargs):
+        # instance = self.get_object()
 
+        # # Add your custom delete logic here
+        # # For example, you can perform additional checks or actions before deleting the instance
+
+        # self.perform_destroy(instance)
+        
+    
 class StoreOpeningSerializer(serializers.ModelSerializer):
     class Meta:
         model = StoreOpening
@@ -82,11 +101,36 @@ class ProductASerializer(serializers.ModelSerializer):
         model = Product
         exclude = ['store']
 
-class ReviewsSerializer(serializers.ModelSerializer):
+class ReviewsStorSerializer(serializers.ModelSerializer):
     customer=CustomerSerializer()
     class Meta:
         model = Reviews
         exclude = ['store']
+        
+class StoreAdminServicesSerializer(serializers.ModelSerializer):
+    main_service=serializers.CharField(source='main_service.name', read_only=True)
+    class Meta:
+        model = StoreAdminServices
+        fields = ["main_service"]
+    
+class NearbyFeaturedStoreOrderSerializer(serializers.ModelSerializer):
+    address=serializers.CharField(source='provider.address', read_only=True)
+    reviews = serializers.SerializerMethodField()
+    main_services=serializers.SerializerMethodField()
+    class Meta:
+        model = Store
+        fields = ['id','image', 'name', 'about','address','reviews','main_services']
+        
+    def get_reviews(self, obj):
+        reviews_data = ReviewsStorSerializer(obj.reviews_set.all(), many=True).data
+        ratings = [review['rating'] for review in reviews_data]
+        average = sum(ratings) / len(ratings) if ratings else 0
+        return {"count":len(reviews_data),'average':average}
+    def get_main_services(self, obj):
+        main_services=StoreAdminServices.objects.filter(store=obj)
+        
+        return [ main_service.main_service.name  for main_service in main_services ]
+    
 
 class StoreADetailSerializer(serializers.ModelSerializer):
     specialists = serializers.SerializerMethodField()
@@ -118,7 +162,10 @@ class StoreADetailSerializer(serializers.ModelSerializer):
         return ProductASerializer(obj.product_set.all(), many=True).data
 
     def get_reviews(self, obj):
-        return ReviewsSerializer(obj.reviews_set.all(), many=True).data
+        reviews_data = ReviewsSerializer(obj.reviews_set.all(), many=True).data
+        ratings = [review['rating'] for review in reviews_data]
+        average = sum(ratings) / len(ratings) if ratings else 0
+        return {'reviews_data':reviews_data,"count":len(reviews_data),'average':average}
 
     class Meta:
         model = Store
