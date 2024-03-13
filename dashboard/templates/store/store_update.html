@@ -29,11 +29,14 @@
           </div>
   
           <div class="form-group text-right">
-            <label for="{{ form.image.id_for_label }}">{{ form.image.label }}</label>
+            <label class="btn btn-primary " for="{{ form.image.id_for_label }}">{{ form.image.label }}</label>
             {{ form.image }}
             <span class="text1 text-dark"></span>
+            {% if store.image %}
           <img id="uploaded-image" src="{{store.image.url}}" alt="Uploaded Image" width="100" style="display: block;">
-
+          {% else %}
+          <img id="uploaded-image" src="" alt="Uploaded Image" width="100" style="display: none;">
+          {% endif %}
             {% if form.image.errors %}
               <div class="text-danger">
                 {% for error in form.image.errors %}
@@ -83,7 +86,7 @@
       uploadedImage.src = URL.createObjectURL(this.files[0]);
       uploadedImage.style.display = "block";
     });
-  </script>
+  
   </script>
 
 {% endblock %}

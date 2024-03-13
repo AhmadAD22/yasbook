@@ -19,7 +19,7 @@ class CategoryForm(forms.ModelForm):
             'name': 'إسم التصنيف',
         }
         widgets = {
-            'image': forms.ClearableFileInput(attrs={'class': 'form-control-file', 'accept': 'image/*'}),
+            'image': forms.FileInput(attrs={'class': 'form-control-file', 'accept': 'image/*'}),
             'name': forms.TextInput(attrs={'class': 'form-control'}),
         }
         
@@ -36,7 +36,7 @@ class MainServiceForm(forms.ModelForm):
         widgets = {
             'category': forms.Select(attrs={'class': 'form-control'}),
             'name': forms.TextInput(attrs={'class': 'form-control'}),
-            'image': forms.ClearableFileInput(attrs={'class': 'form-control-file', 'accept': 'image/*'}),
+            'image': forms.FileInput(attrs={'class': 'form-control-file', 'accept': 'image/*'}),
         }
 
 

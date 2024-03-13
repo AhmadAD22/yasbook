@@ -16,7 +16,7 @@
         <form method="post" enctype="multipart/form-data">
           {% csrf_token %}
   
-          <div class="form-group text-right">
+          <div class="form-group">
             <label for="{{ form.provider.id_for_label }}">{{ form.provider.label }}</label>
             {{ form.provider }}
             {% if form.provider.errors %}
@@ -28,8 +28,8 @@
             {% endif %}
           </div>
   
-          <div class="form-group text-right">
-            <label for="{{ form.image.id_for_label }}">{{ form.image.label }}</label>
+          <div class="form-group" >
+            <label class="btn btn-primary"  for="{{ form.image.id_for_label }}">{{ form.image.label }}</label>
             {{ form.image }}
             <span class="text1 text-dark"></span>
             <img id="uploaded-image" src="" alt="Uploaded Image" width="100" style="display: none;">

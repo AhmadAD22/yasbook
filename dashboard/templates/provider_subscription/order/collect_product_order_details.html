@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %} Product Orders {% endblock %}
+{% block title %} Collect Products Money {% endblock %}
 
 {% block content %}
 <script>
@@ -13,12 +13,17 @@
     }
   }
 </script>
-
-<h3 class="text-center main-color-text">Collect Products Money</h3>
-
-<h5 class="">Total Products: {{ total_products }}</h5>
-<h5 class="">Total Quantity: {{ product_statistics.orders_counts }}</h5>
-<h5 class="">Profit: {{ product_statistics.profit }}</h5>
+<div class="d-flex justify-content-center align-items-center">
+  <div class="card w-50">
+      <div class="card-body text-center">
+          <h5 class="card-title ">Collect Products Money</h5>
+  
+          <h6 class="">Total Products: {{ total_products }}</h6>
+          <h6 class="">Total Quantity: {{ product_statistics.orders_counts }}</h6>
+          <h6 class="">Profit: {{ product_statistics.profit }}</h6>
+      </div>
+  </div>
+</div>
 
 <form method="post" action="{% url "collect_product_order" providersubscription.id %}">
   {% csrf_token %}

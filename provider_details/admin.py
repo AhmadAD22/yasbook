@@ -180,12 +180,12 @@ class ServiceAdmin(admin.ModelAdmin):
     )
 
 admin.site.register(Service, ServiceAdmin)
-# admin.site.register(StoreSpecialist)
-# admin.site.register(StoreOpening)
-# # admin.site.register(SpecialistWorks)
-# admin.site.register(StoreGallery)
+admin.site.register(StoreSpecialist)
+admin.site.register(StoreOpening)
+# admin.site.register(SpecialistWorks)
+admin.site.register(StoreGallery)
 admin.site.register(StoreAdminServices)
-# admin.site.register(FollowingStore)
+admin.site.register(FollowingStore)
 
 
 

@@ -161,7 +161,7 @@ def collect_service_order_details(request, id):
     if request.method == 'POST':
         selected_service_orders = request.POST.getlist('collected_service_orders')
         ServiceOrder.objects.filter(id__in=selected_service_orders).update(collected=True)
-        return redirect('collect_servce_order',id)
+        return redirect('collect_service_order',id)
     providersubscription = ProviderSubscription.objects.get(id=id)
     store = Store.objects.get(provider=providersubscription.provider)
     service = Service.objects.filter(store=store)

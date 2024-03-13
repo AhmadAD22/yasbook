@@ -74,9 +74,12 @@ from provider_details.models import Provider
 
 class ProviderSubscription(models.Model):
     DURATION_CHOICES = (
+        (30, '30 days'),
+        (60, '60 days'),
         (90, '90 days'),
         (180, '180 days'),
         (365, '365 days'),
+        (730, '730 days'),
     )
 
     provider = models.OneToOneField(Provider, verbose_name="provider", on_delete=models.CASCADE)

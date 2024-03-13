@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
-{% block title %} service Orders {% endblock %}
+{% block title %} Collect services Money {% endblock %}
+{% block subscription %}active{% endblock %}
 
 {% block content %}
 <script>
@@ -13,14 +14,19 @@
     }
   }
 </script>
+<div class="d-flex justify-content-center align-items-center">
+  <div class="card w-50">
+      <div class="card-body text-center">
+          <h5 class="card-title ">Collect services Money</h5>
+  
+          <h6 class="">Total services: {{ total_services }}</h6>
+          <h6 class="">Total Quantity: {{ service_statistics.orders_counts }}</h6>
+          <h6 class="">Profit: {{ service_statistics.profit }}</h6>
+      </div>
+  </div>
+</div>
 
-<h3 class="text-center main-color-text">Collect services Money</h3>
-
-<h5 class="">Total services: {{ total_services }}</h5>
-<h5 class="">Total Quantity: {{ service_statistics.orders_counts }}</h5>
-<h5 class="">Profit: {{ service_statistics.profit }}</h5>
-
-<form method="post" action="{% url "collect_servce_order" providersubscription.id %}">
+<form method="post" action="{% url "collect_service_order" providersubscription.id %}">
   {% csrf_token %}
   <table class="table">
     <thead>

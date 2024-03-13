@@ -182,7 +182,7 @@ class StoreForm(forms.ModelForm):
         }
         widgets = {
             'provider': forms.Select(attrs={'class': 'form-control'}),
-            'image': forms.ClearableFileInput(attrs={'class': 'form-control-file', 'accept': 'image/*'}),
+            'image': forms.FileInput(attrs={'class': 'input','type':'file' ,'accept': 'image/*'}),
             'name': forms.TextInput(attrs={'class': 'form-control'}),
             'about': forms.Textarea(attrs={'class': 'form-control', 'rows': 5}),
         }
@@ -206,7 +206,7 @@ class ServiceForm(forms.ModelForm):
         }
         widgets = {
             'main_service': forms.Select(attrs={'class': 'form-control'}),
-            'image': forms.ClearableFileInput(attrs={'class': 'form-control-file', 'accept': 'image/*'}),
+            'image': forms.FileInput(attrs={'class': 'form-control-file', 'accept': 'image/*'}),
             'name': forms.TextInput(attrs={'class': 'form-control'}),
             'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 5}),
             'price': forms.NumberInput(attrs={'class': 'form-control'}),
@@ -227,7 +227,7 @@ class ProductForm(forms.ModelForm):
             'offers': 'الخصم',
         }
         widgets = {
-            'image': forms.ClearableFileInput(attrs={'class': 'form-control-file', 'accept': 'image/*'}),
+            'image': forms.FileInput(attrs={'class': 'form-control-file', 'accept': 'image/*'}),
             'name': forms.TextInput(attrs={'class': 'form-control'}),
             'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 5}),
             'price': forms.NumberInput(attrs={'class': 'form-control'}),
