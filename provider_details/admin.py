@@ -171,7 +171,7 @@ class ServiceAdmin(admin.ModelAdmin):
 
     fieldsets = (
         ('Service Information', {
-            'fields': ('store', 'main_service', 'name', 'description', 'price', 'offers', 'duration')
+            'fields': ('store', 'main_service', 'name','specialists', 'description', 'price', 'offers', 'duration')
         }),
         ('Image and Dates', {
             'fields': ( 'created_at', 'updated_on','image_display'),

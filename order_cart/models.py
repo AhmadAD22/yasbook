@@ -43,6 +43,7 @@ class ProductOrder(models.Model):
     quantity = models.PositiveIntegerField(default=1)
     accept = models.BooleanField(default=False, verbose_name='موافقة التاجر',null=True,blank=True)
     collected = models.BooleanField(default=False, verbose_name='تم تحصيلها', null=True, blank=True)
+    accomplished=models.BooleanField(default=False, verbose_name='تم انجازه',null=True,blank=True)
     date= models.DateTimeField(auto_now_add=True, verbose_name='تاريخ الإنشاء',blank=True,null=True)
 
 
@@ -59,6 +60,7 @@ class ServiceOrder(models.Model):
     date = models.DateTimeField( verbose_name='تاريخ الحجز',blank=True,null=True)
     duration= models.PositiveIntegerField(verbose_name='مدة الخدمة (بالدقائق)', blank=True, null=True)
     accept = models.BooleanField(default=False, verbose_name='موافقة التاجر',null=True,blank=True)
+    accomplished=models.BooleanField(default=False, verbose_name='تم انجازه',null=True,blank=True)
     collected = models.BooleanField(default=False, verbose_name='تم تحصيلها', null=True, blank=True)
     
     

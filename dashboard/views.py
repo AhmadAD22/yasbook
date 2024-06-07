@@ -19,18 +19,18 @@ def login_view(request):
     if request.user.is_authenticated:
         return redirect('main_dashboard')
     if request.method == 'POST':
-        username = request.POST['username']
+        phone = request.POST['phone']
         password = request.POST['password']
-        user = authenticate(request, username=username, password=password)
-        if user is not None and isinstance(user, AdminUser):
-            login(request, user)
+        user = authenticate(request, phone=phone, password=password)
+        if user is not None:
+            if user.is_superuser:
+                login(request, user)
             return redirect('main_dashboard')
         else:
-            error_message = 'Invalid username or password'
+            error_message = 'Invalid phone number or password'
             return render(request, 'login.html', {'error_message': error_message})
     else:
         return render(request, 'login.html')
-
 
 def logout_view(request):
     logout(request)
@@ -261,7 +261,7 @@ def edit_provider_subscription(request, provider_subscription_id):
 @staff_member_required(login_url='login')
 def create_promotion_subscription(request):
     if request.method == 'POST':
-        form = PromotionSubscriptionForm(request.POST)
+        form = PromotionSubscriptionForm(request.POST,request.FILES)
         if form.is_valid():
             form.save()
             return redirect('promotion-subscription-list')
@@ -273,7 +273,7 @@ def create_promotion_subscription(request):
 def update_promotion_subscription(request, pk):
     subscription = PromotionSubscription.objects.get(pk=pk)
     if request.method == 'POST':
-        form = PromotionSubscriptionForm(request.POST, instance=subscription)
+        form = PromotionSubscriptionForm(request.POST, request.FILES, instance=subscription)
         if form.is_valid():
             form.save()
             return redirect('promotion-subscription-list')

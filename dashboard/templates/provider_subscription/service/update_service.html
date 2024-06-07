@@ -49,8 +49,11 @@
               </div>
               <span class="text1"></span>
             </div>
+            {% if form.image.value %}
             <img id="uploaded-image" src="{{form.image.value.url}}" alt="Uploaded Image" width="100" style="display: block;">
-
+            {% else %}
+            <img id="uploaded-image" src="" alt="Uploaded Image" width="100" style="display: none;">
+            {% endif %}
             {% if form.image.errors %}
               <div class="text-danger">
                 {% for error in form.image.errors %}

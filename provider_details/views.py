@@ -1,4 +1,3 @@
-from django.shortcuts import render
 from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
 from .models import *
@@ -8,16 +7,87 @@ from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
 from rest_framework.response import Response
 from django.core.mail import send_mail
-from django.conf import settings
 from rest_framework.views import APIView
 from rest_framework import status
-from .geographic import get_nearest_store
-from rest_framework.exceptions import ValidationError
+from utils.geographic import get_nearest_store
 from django.db.models import Count
-from auth_login.views import error_handler
-from channels.layers import get_channel_layer
-from asgiref.sync import async_to_sync
-from notification.models import Notification
+from utils.error_handle import error_handler
+from datetime import datetime
+from rest_framework.views import APIView
+from rest_framework.response import Response
+
+class SubscriptionOrderDetailsAPIView(APIView):
+    def get(self, request):
+        provider = Provider.objects.get(username=request.user.username)
+        
+        try:
+          subscription=ProviderSubscription.objects.get(provider=provider)
+          if (subscription.is_duration_finished()):
+                return Response({'error':'Your subscription duration is finished'})
+        except:
+            error_messages={"error":"You do not have a subscription"}
+            return Response(error_messages, status=status.HTTP_400_BAD_REQUEST)
+        store = Store.objects.get(provider=provider)
+        services = Service.objects.filter(store=store)
+        service_orders = ServiceOrder.objects.filter(service__in=services,accept=True,accomplished=True)
+
+        if request.GET.get('collected_filter') == 'collected':
+            service_orders = service_orders.filter(collected=False)
+
+        start_date = request.GET.get('start_date')
+        end_date = request.GET.get('end_date')
+
+        if start_date and end_date:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d')
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').replace(hour=23, minute=59, second=59)
+            service_orders = service_orders.filter(date__range=(start_date, end_date))
+
+        total_service = service_orders.count()
+        serializer = ServiceOrderReportSerializer(service_orders, many=True)
+
+        context = {
+            'service_orders': serializer.data,
+            'total_service': total_service
+        }
+        return Response(context)
+
+
+class ProductOrderReportAPIView(APIView):
+    def get(self, request):
+        provider = Provider.objects.get(username=request.user.username)
+        
+        try:
+          subscription=ProviderSubscription.objects.get(provider=provider)
+          if (subscription.is_duration_finished()):
+                return Response({'error':'Your subscription duration is finished'})
+          if not subscription.store_subscription:
+               return Response({'error':'Your have not Products  subscription'})
+        except:
+            error_messages={"error":"You do not have a subscription"}
+            return Response(error_messages, status=status.HTTP_400_BAD_REQUEST)
+        store = Store.objects.get(provider=provider)
+        products = Product.objects.filter(store=store)
+        product_orders = ProductOrder.objects.filter(product__in=products,accept=True,accomplished=True)
+
+        if request.GET.get('collected') == 'false':
+            product_orders = product_orders.filter(collected=False)
+
+        # Check if start_date and end_date are provided
+        start_date = request.GET.get('start_date')
+        end_date = request.GET.get('end_date')
+        if start_date and end_date:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+            product_orders = product_orders.filter(date__range=[start_date, end_date])
+
+        total_products = product_orders.count()
+        serializer = ProductOrderReportSerializer(product_orders, many=True)
+
+        context = {
+            'product_orders': serializer.data,
+            'total_products': total_products,
+        }
+        return Response(context)
 
 
 
@@ -46,16 +116,48 @@ class StoreSpecialistListCreateView(APIView):
     def post(self, request, format=None):
         provider = Provider.objects.get(username=request.user.username)
         store = Store.objects.get(provider=provider)
-        serializer = self.serializer_class(data=request.data)
+        specialistworks = request.data.get("specialistworks")
+        specialistworks_list = specialistworks.split(',')
+        converted_list = [int(item) for item in specialistworks_list]
+        
+        # Create a mutable copy of request.data
+        mutable_data = request.data.copy()
+        mutable_data.setlist("specialistworks", converted_list)
+        
+        serializer = self.serializer_class(data=mutable_data)
         if serializer.is_valid():
-            serializer.save(store=store)
+            serializer.save(store=store, specialistworks=converted_list)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(error_handler(serializer.errors), status=status.HTTP_400_BAD_REQUEST)
 
-class StoreSpecialistRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = StoreSpecialist.objects.all()
-    serializer_class = StoreSpecialistSerializer
+
+class StoreSpecialistRetrieveUpdateDestroyView(APIView):
     permission_classes = [IsAuthenticated]
+
+    def get_object(self, pk):
+        return get_object_or_404(StoreSpecialist, pk=pk)
+
+    def get(self, request, pk, format=None):
+        specialist = self.get_object(pk)
+        serializer = StoreSpecialistSerializer(specialist)
+        return Response(serializer.data)
+
+    def put(self, request, pk, format=None):
+        specialist = self.get_object(pk)
+        serializer = StoreSpecialistSerializer(specialist, data=request.data)
+        specialistworks = request.data.get("specialistworks")
+        specialistworks_list = specialistworks.split(',')
+        converted_list = [int(item) for item in specialistworks_list]
+        if serializer.is_valid():
+            serializer.save(specialistworks=converted_list)
+            return Response(serializer.data)
+        return Response(error_handler(serializer.errors), status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk, format=None):
+        specialist = self.get_object(pk)
+        specialist.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class StoreOpeningListCreateView(generics.ListCreateAPIView):
     serializer_class = StoreOpeningSerializer
@@ -127,23 +229,54 @@ class ServiceListCreateView(APIView):
         except:
             error_messages={"error":"You do not have a subscription"}
             return Response(error_messages, status=status.HTTP_400_BAD_REQUEST)
+        
+        specialists = request.data.get("specialists")
+        converted_list =[]
+        if specialists:
+            specialists_list = specialists.split(',')
+            converted_list = [int(item) for item in specialists_list]
         serializer = ServiceSerializer(data=request.data)
         if serializer.is_valid():
                 if(request.data.get('price')):
                     price = request.data.get('price')  # Assuming price is in the request data
                     calculated_price = float(price) + subscription.service_profit
-                    serializer.save(store=store, price=calculated_price)
+                    serializer.save(store=store, price=calculated_price,specialists=converted_list)
                 else:
                     calculated_price=float(subscription.service_profit)
-                    serializer.save(store=store, price=calculated_price)
+                    serializer.save(store=store, price=calculated_price,specialists=converted_list)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(error_handler(serializer.errors), status=status.HTTP_400_BAD_REQUEST)
 
 
-class ServiceRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Service.objects.all()
-    serializer_class = ServiceSerializer
+class ServiceRetrieveUpdateDestroyView(APIView):
     permission_classes = [IsAuthenticated]
+
+    def get_object(self, pk):
+        return get_object_or_404(Service, pk=pk)
+
+    def get(self, request, pk, format=None):
+        service = self.get_object(pk)
+        serializer = ServiceSerializer(service)
+        return Response(serializer.data)
+
+    def put(self, request, pk, format=None):
+        specialists = request.data.get("specialists")
+        if not specialists:
+            return Response({"error":"You must add least one specialist!"})
+        specialists_list = specialists.split(',')
+        converted_list = [int(item) for item in specialists_list]
+        serializer = ServiceSerializer(data=request.data)
+        service = self.get_object(pk)
+        serializer = ServiceSerializer(service, data=request.data)
+        if serializer.is_valid():
+            serializer.save(specialists=converted_list)
+            return Response(serializer.data)
+        return Response(error_handler(serializer.errors), status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk, format=None):
+        service = self.get_object(pk)
+        service.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
     
 class ProductListCreateView(APIView):
     permission_classes = [IsAuthenticated]
@@ -344,7 +477,8 @@ class FeaturedStoreNearbyStoreOrderAndStoryView(APIView):
         main_srvice=MainService.objects.filter(id=self.kwargs['main_service_id']).first()
         main_service_counts = MainService.objects.filter(category=main_srvice.category).annotate(count=Count('service__serviceorder__customer', distinct=True)).order_by('-count')
         main_service_data = [
-            {
+            {  
+                'id': main_service.id,
                 'name': main_service.name,
                 'count': main_service.count,
                 'image': main_service.image.url if main_service.image else None,
@@ -382,7 +516,11 @@ class NearbyStoreOrderByMainServiceView(APIView):
         subscripted_stores=Store.objects.filter(provider__id__in=provider_subscripted_ids).values_list('id', flat=True)
         ####featured stores by number of followes######
         #list stores ids that have the main_service_id
-        stores_have_selected_main_service_ides = StoreAdminServices.objects.filter(main_service__in=main_service_ids).values_list('store_id', flat=True)
+        stores_have_selected_main_service_ides=[]
+        if main_service_ids:
+            stores_have_selected_main_service_ides = StoreAdminServices.objects.filter(main_service__in=main_service_ids).values_list('store_id', flat=True)
+        else:
+            stores_have_selected_main_service_ides=StoreAdminServices.objects.all().values_list('store_id', flat=True)
         # Convert the QuerySet to a set for intersection
         stores_have_selected_main_service_ides = set(stores_have_selected_main_service_ides)
         subscripted_stores=set(subscripted_stores)
@@ -410,15 +548,13 @@ class EmailSendingView(APIView):
     def post(self, request):
         subject = request.data.get('subject')
         message = request.data.get('message')
-        # sender = request.data.get('sender')
-        # recipient = request.data.get('recipient')
         user=MyUser.objects.get(id=request.user.id)
         message="from: "+str( user.email)+"\n" + message
         if not (message and subject):
             return Response({'error': 'Missing required fields'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            send_mail(subject, message,"", ['ahmadadrah0@gmail.com'], fail_silently=False)
+            send_mail(subject, message,"", ["yasafco@gmail.com"], fail_silently=False)
             
             return Response({'success': 'Email sent'}, status=status.HTTP_200_OK)
         except Exception as e:

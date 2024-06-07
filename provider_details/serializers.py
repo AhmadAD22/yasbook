@@ -1,6 +1,39 @@
 from rest_framework import serializers
 from .models import *
 from auth_login.serializers import CustomerSerializer
+from auth_login.models import ProviderSubscription
+from order_cart.models import *
+
+
+class ServiceOrderReportSerializer(serializers.ModelSerializer):
+    customer=serializers.CharField(source='customer.name', read_only=True)
+    app_fees = serializers.SerializerMethodField()
+    service=serializers.CharField(source='service.name', read_only=True)
+    service_price=serializers.CharField(source='service.price', read_only=True)
+    class Meta:
+        model = ServiceOrder
+        fields = ['id','customer', 'service','date','service_price', 'collected','app_fees']
+    def get_app_fees(self, obj):
+        provider_subscription =ProviderSubscription.objects.get(provider=obj.service.store.provider) 
+        if provider_subscription:
+            return provider_subscription.service_profit
+        return None
+
+class ProductOrderReportSerializer(serializers.ModelSerializer):
+    app_fees = serializers.SerializerMethodField()
+    customer=serializers.CharField(source='customer.name', read_only=True)
+    product=serializers.CharField(source='product.name', read_only=True)
+    product_price=serializers.CharField(source='product.price', read_only=True)
+
+    class Meta:
+        model = ProductOrder
+        fields = ['id','customer', 'product', 'quantity','product_price', 'accept', 'collected', 'date','app_fees']
+        
+    def get_app_fees(self, obj):
+        provider_subscription =ProviderSubscription.objects.get(provider=obj.product.store.provider) 
+        if provider_subscription.store_subscription:
+            return provider_subscription.product_profit
+        return None
 
 ## for provider app
 class StoreStorySerializer(serializers.ModelSerializer):
@@ -8,11 +41,15 @@ class StoreStorySerializer(serializers.ModelSerializer):
     class Meta:
         model = StoreStory
         fields = ['image', ]
+        
 class StoreSerializer(serializers.ModelSerializer):
+    
     story_of_store=StoreStorySerializer(read_only=True)
     class Meta:
         model = Store
         fields = ['image', 'name', 'about','story_of_store']
+
+    
 
 class StoreForProviderWhenCreateSerializer(serializers.ModelSerializer):
     class Meta:
@@ -26,10 +63,14 @@ class MainServiceSerializer(serializers.ModelSerializer):
         read_only_fields = ['name']
         
 class StoreSpecialistSerializer(serializers.ModelSerializer):
-    specialistworks = serializers.PrimaryKeyRelatedField(many=True, queryset=MainService.objects.all())
+    specialistworks = serializers.SlugRelatedField(many=True, slug_field='name', read_only=True)
     class Meta:
         model = StoreSpecialist
-        fields = ['id', 'name', 'phone','image', 'specialistworks']
+        fields = ['id', 'name', 'phone', 'image', 'specialistworks']
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.fields['image'].required = False
+        
         
     def to_representation(self, instance):
         representation = super().to_representation(instance)
@@ -56,14 +97,34 @@ class StoreGallerySerializer(serializers.ModelSerializer):
         exclude = ['store']
 
 class ServiceSerializer(serializers.ModelSerializer):
+    specialists = serializers.SerializerMethodField()
+    price_after_offer = serializers.SerializerMethodField()
     class Meta:
         model = Service
         exclude = ['store']
 
+    def get_specialists(self, instance):
+        specialists = instance.specialists.all()
+        return [{'id': specialist.id, 'name': specialist.name} for specialist in specialists]
+    
+    def get_price_after_offer(self, obj):
+            if obj.offers is not None:
+                return obj.price_after_offer
+            return obj.price
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        representation['specialists'] = self.get_specialists(instance)
+        return representation
+    
 class ProductSerializer(serializers.ModelSerializer):
+    price_after_offer = serializers.SerializerMethodField()
     class Meta:
         model = Product
-        exclude = ['store']
+        exclude = ['store','hours_Service']
+    def get_price_after_offer(self, obj):
+            if obj.offers is not None:
+                return obj.price_after_offer
+            return obj.price
 
 class ReviewsSerializer(serializers.ModelSerializer):
     class Meta:
@@ -139,6 +200,9 @@ class StoreADetailSerializer(serializers.ModelSerializer):
     services = serializers.SerializerMethodField()
     products = serializers.SerializerMethodField()
     reviews = serializers.SerializerMethodField()
+    address=serializers.CharField(source='provider.address', read_only=True)
+    phone=serializers.CharField(source='provider.phone', read_only=True)
+    
 
 
     def get_specialists(self, obj):
@@ -155,11 +219,11 @@ class StoreADetailSerializer(serializers.ModelSerializer):
 
     def get_services(self, obj):
         # Customize the serialization of 'services' field here
-        return ServiceASerializer(obj.service_set.all(), many=True).data
+        return ServiceSerializer(obj.service_set.all(), many=True).data
 
     def get_products(self, obj):
         # Customize the serialization of 'products' field here
-        return ProductASerializer(obj.product_set.all(), many=True).data
+        return ProductSerializer(obj.product_set.all(), many=True).data
 
     def get_reviews(self, obj):
         reviews_data = ReviewsSerializer(obj.reviews_set.all(), many=True).data
@@ -169,7 +233,7 @@ class StoreADetailSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Store
-        fields = ['id','image','name','about','created_at','openings', 'gallery', 'products', 'services', 'specialists','reviews']
+        fields = ['id','image','name','address','phone','about','created_at','openings', 'gallery', 'products', 'services', 'specialists','reviews']
 
 class StoreFollowingListSerializer(serializers.ModelSerializer):
     store=StoreSerializer(read_only=True)
@@ -185,3 +249,8 @@ class StoreFollowingSerializer(serializers.ModelSerializer):
         model = FollowingStore
         fields = '__all__'
         read_only_fields=['customer']
+        
+class CouponSerializer(serializers.ModelSerializer):
+    class Meta:
+        model=Coupon
+        fields='__all__'

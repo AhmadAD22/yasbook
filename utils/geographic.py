@@ -1,7 +1,7 @@
 from geopy.distance import geodesic
 from auth_login.models import Provider
-from .models import Store
-from .serializers import NearbyFeaturedStoreOrderSerializer
+from provider_details.models import Store
+from provider_details.serializers import NearbyFeaturedStoreOrderSerializer
 
 def get_nearest_store(customer_latitude, customer_longitude,store_ids):
     stores = Store.objects.filter(id__in=store_ids)

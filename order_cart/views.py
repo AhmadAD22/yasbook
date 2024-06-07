@@ -5,7 +5,7 @@ from .serializers import *
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from auth_login.views import error_handler
+from utils.error_handle import error_handler
 from notification.models import Notification
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
@@ -61,16 +61,44 @@ class ServiceOrderProviderListView(generics.ListAPIView):
         provider = Provider.objects.get(username=self.request.user.username)
         # store = Store.objects.get(provider=provider)
         # service =Service.objects.get(store=store)
-        return ServiceOrder.objects.filter(service__store__provider=provider)
+        return ServiceOrder.objects.filter(service__store__provider=provider,accomplished=False)
 
 class ProductOrderProviderListView(generics.ListAPIView):
     serializer_class = ProductOrderProviderSerializer
     permission_classes = [permissions.IsAuthenticated]
     def get_queryset(self):
         provider = Provider.objects.get(username=self.request.user.username)
-        return ProductOrder.objects.filter(product__store__provider=provider)
+        return ProductOrder.objects.filter(product__store__provider=provider,accomplished=False)
     
+class ProductOrderProviderAccomplishedclassView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    def patch(self, request, pk):
+        try:
+            product_order = ProductOrder.objects.get(pk=pk)
+        except ProductOrder.DoesNotExist:
+            return Response({'error': 'Product order not found.'}, status=status.HTTP_404_NOT_FOUND)
 
+        accomplished = request.data.get('accomplished', False)
+        product_order.accomplished = accomplished
+        product_order.save()
+
+        return Response({'success': 'Product order updated successfully.'}, status=status.HTTP_200_OK)
+        
+        
+class ServiceOrderProviderAccomplishedView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    def patch(self, request, pk):
+        try:
+            service_order = ServiceOrder.objects.get(pk=pk)
+        except ServiceOrder.DoesNotExist:
+            return Response({'error': 'Service order not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        accomplished = request.data.get('accomplished', False)
+        service_order.accomplished = accomplished
+        service_order.save()
+
+        return Response({'success': 'Service order updated successfully.'}, status=status.HTTP_200_OK)
+        
 
 class ProductOrderProviderAcceptView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -180,17 +208,14 @@ class ServiceAndProductListView(APIView):
     def get(self, request):
         # Retrieve the service and product objects from the database
         provider = Provider.objects.get(username=request.user.username)
-        product_queryset=ProductOrder.objects.filter(product__store__provider=provider)
-        service_queryset= ServiceOrder.objects.filter(service__store__provider=provider)
+        product_queryset=ProductOrder.objects.filter(product__store__provider=provider,accomplished=False)
+        service_queryset= ServiceOrder.objects.filter(service__store__provider=provider,accomplished=False)
       
 
         # Serialize the service and product objects
         product_serializer = ProductOrderSerializer(product_queryset, many=True)
         service_serializer = ServiceOrderSerializer(service_queryset, many=True)
-        serializer = {
-            'service': service_serializer.data,
-            'product': product_serializer.data
-        }
+
         
         return Response({
                             'service': service_serializer.data,
@@ -256,7 +281,13 @@ class CartItemAPIView(APIView):
 
             product = serializer.validated_data.get('product')
             quantity = serializer.validated_data.get('quantity')
-
+            price=0.0
+            productObj=Product.objects.get(id=product)
+            if productObj.offers:
+                price=productObj.price_after_offer
+            else:
+                price=productObj.price
+            
             # Check if the item already exists in the cart
             existing_item = CartItem.objects.filter(cart=cart[0], product=product).first()
 

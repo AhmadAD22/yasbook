@@ -3,6 +3,7 @@ from auth_login.models import *
 from categroy.models import MainService
 import os
 from django.core.validators import MinValueValidator, MaxValueValidator
+from decimal import Decimal
 
 
 class Store(models.Model):
@@ -93,15 +94,21 @@ class StoreGallery(models.Model):
 class Service(models.Model):
     store = models.ForeignKey(Store, on_delete=models.CASCADE)
     main_service = models.ForeignKey(MainService, on_delete=models.CASCADE,null=True)
-    image = models.ImageField(upload_to='media/provider/service/', verbose_name='رفع الصورة')
+    image = models.ImageField(upload_to='media/provider/service/',null=True,blank=True, verbose_name='رفع الصورة')
     name = models.CharField(max_length=255, verbose_name='اسم الخدمة')
     description = models.TextField(blank=True, null=True, verbose_name='الوصف')
+    specialists=models.ManyToManyField(StoreSpecialist)
     price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='السعر',null=True)
     offers = models.IntegerField(validators=[MinValueValidator(0), MaxValueValidator(100)], default=0,blank=False, verbose_name='الخصم')
     duration= models.PositiveIntegerField(verbose_name='مدة الخدمة (بالدقائق)', blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاريخ الإنشاء',blank=True,null=True)
     updated_on = models.DateTimeField(auto_now=True, verbose_name='تاريخ التحديث',blank=True,null=True)
-
+    @property
+    def price_after_offer(self):
+        if self.offers is not None and self.price is not None:
+            discount = Decimal(float(self.price)) * (Decimal(self.offers) / 100)
+            return Decimal(self.price) - discount
+        return self.price
 
     def delete(self, *args, **kwargs):
         # Delete the associated image file
@@ -113,7 +120,7 @@ class Service(models.Model):
 
 class Product(models.Model):
     store = models.ForeignKey(Store, on_delete=models.CASCADE)
-    image = models.ImageField(upload_to='media/provider/service/', verbose_name='رفع الصورة')
+    image = models.ImageField(upload_to='media/provider/service/',null=True,blank=True, verbose_name='رفع الصورة')
     name = models.CharField(max_length=255, verbose_name='اسم المنتج')
     description = models.TextField(blank=True, null=True, verbose_name='الوصف')
     price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='السعر')
@@ -122,7 +129,13 @@ class Product(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاريخ الإنشاء',blank=True,null=True)
     updated_on = models.DateTimeField(auto_now=True, verbose_name='تاريخ التحديث',blank=True,null=True)
 
-
+    @property
+    def price_after_offer(self):
+        if self.offers is not None and self.price is not None:
+            discount = Decimal(float(self.price)) * (Decimal(self.offers) / 100)
+            return Decimal(self.price) - discount
+        return self.price
+    
     def delete(self, *args, **kwargs):
         # Delete the associated image file
         if self.image:
@@ -142,3 +155,17 @@ class Reviews(models.Model):
 
     def __str__(self):
         return f"Message by {self.customer.username}"
+
+    
+class Coupon(models.Model):
+    name=models.CharField(max_length=150)
+    code=models.CharField( max_length=10)
+    value=models.IntegerField(validators=[MinValueValidator(0), MaxValueValidator(100)], default=0,blank=True,null=True)
+    expired=models.DateTimeField(auto_now=False, auto_now_add=False)
+    
+    def __str__(self):
+        return self.code
+    
+    def is_expired(self):
+        return self.expired < datetime.now()
+    

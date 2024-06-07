@@ -11,6 +11,8 @@ urlpatterns = [
 
     path('provider-get-book-service/', ServiceOrderProviderListView.as_view(), name='service-order-create'),
     path('provider-put-accept-service/<int:pk>/', ServiceOrderProviderAcceptView.as_view(), name='service-order-provider-accept'),
+    path('provider-put-Accomplished-service/<int:pk>/', ServiceOrderProviderAccomplishedView.as_view(), name='service-order-provider-Accomplished'),
+    path('provider-put-Accomplished-product/<int:pk>/', ProductOrderProviderAccomplishedclassView.as_view(), name='provider-put-Accomplished-product'),
 
     path('provider-get-book-product/', ProductOrderProviderListView.as_view(), name='product-order-create'),
     path('provider-put-accept-product/<int:pk>/', ProductOrderProviderAcceptView.as_view(), name='service-order-provider-accept'),

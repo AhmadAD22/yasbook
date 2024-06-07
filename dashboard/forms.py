@@ -36,6 +36,7 @@ class PromotionSubscriptionForm(forms.ModelForm):
         ),
         label='تاريخ الإشتراك'
     )
+
     class Meta:
         model = PromotionSubscription
         fields = '__all__'
@@ -44,12 +45,14 @@ class PromotionSubscriptionForm(forms.ModelForm):
             'promotion_date': forms.Select(attrs={'class': 'form-control'}),
             'promotion_duration_days': forms.Select(attrs={'class': 'form-control'}),
             'profit': forms.NumberInput(attrs={'class': 'form-control'}),
+            'image': forms.FileInput(attrs={'class': 'input','type':'file' ,'accept': 'image/*'}),
         }
         labels = {
-            'promotion_date':'تاريخ الإشتراك',  # Translated label for the "date" field
-            'provider': "المزود",  # Translated label for the "provider" field
-            'promotion_duration_days':"المدة (بالأيام)",  # Translated label for the "duration_days" field
-            'profit':" المبلغ المستحق"
+            'promotion_date': 'تاريخ الإشتراك',
+            'provider': 'المزود',
+            'promotion_duration_days': 'المدة (بالأيام)',
+            'profit': ' المبلغ المستحق',
+            'image': 'رفع الصورة',
         }
 
 class CustomerForm(forms.ModelForm):

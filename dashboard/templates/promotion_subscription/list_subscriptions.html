@@ -30,6 +30,7 @@
                 <th>Duration</th>
                 <th>Fees</th>
                 <th>Is Finished</th>
+                <th>Image</th>
                 <th>Action</th> <!-- New column for delete button -->
                 <!-- Add more headers here as needed -->
             </tr>
@@ -42,6 +43,13 @@
                 <td>{{ subscription.promotion_duration_days }} days</td>
                 <td>{{ subscription.profit }}</td>
                 <td>{{ subscription.is_duration_finished }}</td>
+                <td class="text-center">
+                  {% if subscription.image %}
+                    <img src="{{ subscription.image.url }}" alt="subscription Image" width="100" height="100" class="img-thumbnail small-image">
+                  {% else %}
+                    No image available
+                  {% endif %}
+                </td>
                 <td>
                     <button type="button" rel="tooltip" class="btn btn-danger btn-simple btn-icon btn-sm" data-toggle="modal" data-target="#deletesubscriptionModal{{ subscription.id }}">
                         <i class="now-ui-icons ui-1_simple-remove"></i>

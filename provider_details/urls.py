@@ -1,6 +1,6 @@
 from django.urls import path
 from .views import *
-
+from .all_views.coupon_views import *
 urlpatterns = [
    ## for provider app
     path('update-store/', StoreUpdateView.as_view(), name='update-store'),
@@ -43,6 +43,15 @@ urlpatterns = [
     # path('store-specialists/', StoreSpecialistCreateView.as_view(), name='store-specialists'),
     path('featured-nearby-story-stores/<int:main_service_id>/', FeaturedStoreNearbyStoreOrderAndStoryView.as_view(), name='nfeatured-nearby-order-story'),
     path('nearby/', NearbyStoreOrderByMainServiceView.as_view(), name='nearby'),
+    
+    ##Reports
+    path('product-orders-report/', ProductOrderReportAPIView.as_view(), name='product-orders-report'),
+    path('service-orders-report/', SubscriptionOrderDetailsAPIView.as_view(), name='service-orders-report'),
+    
+    #4
+    path('coupons/', CouponListCreateAPIView.as_view(), name='coupon-list-create'),
+    path('coupons/<int:pk>/', CouponRetrieveUpdateDestroyAPIView.as_view(), name='coupon-retrieve-update-destroy'),
+
 
    
 ]

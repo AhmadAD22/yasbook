@@ -85,3 +85,8 @@ class ProviderSubscriptionAdmin(admin.ModelAdmin):
 
 admin.site.register(ProviderSubscription, ProviderSubscriptionAdmin)
 admin.site.register(PromotionSubscription)
+admin.site.register(OTPRequest)
+admin.site.register(PendingClient)
+admin.site.register(PendingProvider)
+
+

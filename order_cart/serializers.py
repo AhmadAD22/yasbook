@@ -1,8 +1,6 @@
 from rest_framework import serializers
 from .models import *
 from auth_login.serializers import CustomerSerializer
-from collections import defaultdict
-
 from provider_details.models import *
 
 class ServiceSerializer(serializers.ModelSerializer):
@@ -11,13 +9,19 @@ class ServiceSerializer(serializers.ModelSerializer):
         fields = ['id','name','image']
         
 class ProductSerializer(serializers.ModelSerializer):
+    price_after_offer = serializers.SerializerMethodField()
     class Meta:
         model = Product
-        fields = ['id','name','image']
+        fields = ['id','name','image','price','offers','price_after_offer']
+        
+    def get_price_after_offer(self, obj):
+            if obj.offers is not None:
+                return obj.price_after_offer
+            return obj.price
         
 class ServiceOrderSerializer(serializers.ModelSerializer):
     service = ServiceSerializer(read_only=True)
-    customer=serializers.CharField(source='customer.name', read_only=True)
+    customer=CustomerSerializer()
     class Meta:
         model = ServiceOrder
         fields =['id','customer','service',]
@@ -25,10 +29,11 @@ class ServiceOrderSerializer(serializers.ModelSerializer):
         
 class ProductOrderSerializer(serializers.ModelSerializer):
     product= ProductSerializer(read_only=True)
-    customer=serializers.CharField(source='customer.name', read_only=True)
+    customer=CustomerSerializer()    
     class Meta:
         model = ProductOrder
         fields =['id','customer','product','quantity',]
+        
         read_only_fields = ['customer','accept']
 
 
@@ -42,24 +47,40 @@ class StoreSerializer(serializers.ModelSerializer):
 
 class ProductOrderBookSerializer(serializers.ModelSerializer):
     product=ProductSerializer(read_only=True)
+    store_name=serializers.CharField(source='product.store.name', read_only=True)
+    total_price = serializers.SerializerMethodField()
     class Meta:
         model = ProductOrder
-        fields = '__all__'
+        exclude = ['collected']
         read_only_fields = ['customer','accept']
+    def get_total_price(self, obj):
+        if obj.product.offers:
+            return obj.quantity * obj.product.price_after_offer
+        else:
+            return obj.quantity * obj.product.price
         
 
 class ServiceBookOrderSerializer(serializers.ModelSerializer):
+    
     specialist=serializers.CharField(source='specialist.name', read_only=True)
     service_name=serializers.CharField(source='service.name', read_only=True)
+    price=serializers.CharField(source='service.price', read_only=True)
+    price_after_offer=serializers.CharField(source='service.price_after_offer', read_only=True)
+    offer=serializers.CharField(source='service.offers', read_only=True)
     main_service=serializers.CharField(source='service.main_service', read_only=True)
     category=serializers.CharField(source='service.main_service.category', read_only=True)
+    store_name = serializers.SerializerMethodField()
+    store_image = serializers.SerializerMethodField()
+   
+    def get_store_name(self, obj):
+        return obj.service.store.name if obj.service.store else None
+
+    def get_store_image(self, obj):
+        return obj.service.store.image.url if obj.service.store and obj.service.store.image else None
 
     class Meta:
         model = ServiceOrder
-        fields = '__all__'
-        read_only_fields = ['customer','accept']
-
-
+        fields = ('customer', 'main_service','service_name','price','offer','price_after_offer','service', 'category','specialist', 'time_start', 'date', 'duration', 'accept', 'store_name', 'store_image')
 
 ###############PROVIDER##################################
 class ServiceOrderProviderSerializer(serializers.ModelSerializer):
@@ -87,10 +108,9 @@ class ServiceOrderProviderAcceptSerializer(serializers.ModelSerializer):
         fields = ['accept','specialist','service','date','duration']
         read_only_fields = ['customer','date','duration']
 
-
 class ProductOrderProviderAcceptSerializer(serializers.ModelSerializer):
     product= ProductSerializer(read_only=True)
-    customer=serializers.CharField(source='customer.name', read_only=True)
+    customer=CustomerSerializer(read_only=True)
     # specialist=serializers.CharField(source='specialist.name', read_only=True)
     class Meta:
         model = ProductOrder
