@@ -10,8 +10,11 @@ from notification.models import Notification
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from provider_details.models import *
+from django.db.models import Sum
+from django.db.models import Sum, F, DecimalField
+from decimal import Decimal
 from rest_framework.exceptions import NotFound
-
+from django.db.models import Q
 
 
 class ProductOrderCreateView(generics.CreateAPIView):
@@ -20,7 +23,7 @@ class ProductOrderCreateView(generics.CreateAPIView):
 
     
     def perform_create(self, serializer):
-        customer=Customer.objects.get(username=self.request.user.username)
+        customer=Customer.objects.get(phone=self.request.user.phone)
 
         serializer.save(customer=customer)
 
@@ -30,7 +33,7 @@ class ProductOrderListView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        customer=Customer.objects.get(username=self.request.user.username)
+        customer=Customer.objects.get(phone=self.request.user.phone)
         
         return ProductOrder.objects.filter(customer=customer)
     
@@ -39,7 +42,7 @@ class ServiceOrderCreateView(generics.CreateAPIView):
     serializer_class = ServiceBookOrderSerializer
     permission_classes = [permissions.IsAuthenticated]
     def perform_create(self, serializer):
-        customer=Customer.objects.get(username=self.request.user.username)
+        customer=Customer.objects.get(phone=self.request.user.phone)
 
         serializer.save(customer=customer)
 
@@ -47,57 +50,169 @@ class ServiceOrderListView(generics.ListAPIView):
     serializer_class = ServiceBookOrderSerializer
     permission_classes = [permissions.IsAuthenticated]
     def get_queryset(self):
-        customer=Customer.objects.get(username=self.request.user.username)
+        customer=Customer.objects.get(phone=self.request.user.phone)
         return ServiceOrder.objects.filter(customer=customer)
     
 
 
 ### provider
 
-class ServiceOrderProviderListView(generics.ListAPIView):
-    serializer_class = ServiceOrderProviderSerializer
+class CurrentServiceOrderProviderListView(APIView):
+    # serializer_class = ServiceOrderProviderSerializer
     permission_classes = [permissions.IsAuthenticated]
-    def get_queryset(self):
-        provider = Provider.objects.get(username=self.request.user.username)
-        # store = Store.objects.get(provider=provider)
-        # service =Service.objects.get(store=store)
-        return ServiceOrder.objects.filter(service__store__provider=provider,accomplished=False)
 
-class ProductOrderProviderListView(generics.ListAPIView):
-    serializer_class = ProductOrderProviderSerializer
+    def get(self, request, format=None):
+        provider = Provider.objects.get(phone=request.user.phone)
+        service_orders = ServiceOrder.objects.filter(
+            Q(service__store__provider=provider) &
+            (Q(status=Status.PENDING) | Q(status=Status.IN_PROGRESS)))
+        
+        accepted_orders=service_orders.filter(status=Status.IN_PROGRESS)
+        new_order=service_orders.filter(status=Status.PENDING)
+        # Calculate the number of orders
+        order_count = service_orders.count()
+        
+        # Calculate the total price of orders
+        total_price = service_orders.aggregate(total_price=Sum('service__price'))['total_price']
+        
+        
+        new_orders_serializer = ServiceOrderProviderSerializer(new_order, many=True)
+        in_progress_serializer = ServiceOrderProviderSerializer(accepted_orders, many=True)
+        data = {
+            'order_count': order_count,
+            'total_price': total_price if total_price else 0,
+            'new_orders': new_orders_serializer.data,
+            'in_progress_orders':in_progress_serializer.data
+        }
+        return Response(data, status=status.HTTP_200_OK)
+    
+    
+class PreviousServiceOrderProviderListView(APIView):
+    # serializer_class = ServiceOrderProviderSerializer
     permission_classes = [permissions.IsAuthenticated]
-    def get_queryset(self):
-        provider = Provider.objects.get(username=self.request.user.username)
-        return ProductOrder.objects.filter(product__store__provider=provider,accomplished=False)
+
+    def get(self, request, format=None):
+        provider = Provider.objects.get(phone=request.user.phone)
+        service_orders = ServiceOrder.objects.filter(
+            Q(service__store__provider=provider) &
+            (Q(status=Status.CANCELLED) | Q(status=Status.COMPLETED) | Q(status=Status.REJECTED))
+        )
+        accomplished_orders = service_orders.filter(status=Status.COMPLETED)
+        rejected_orders = service_orders.filter(status=Status.REJECTED)
+        canceled_orders = service_orders.filter(status=Status.CANCELLED)
+
+        # Calculate the number of orders
+        order_count = accomplished_orders.count()
+
+        # Calculate the total price of orders
+        total_price = service_orders.aggregate(total_price=Sum('service__price'))['total_price']
+
+        accomplished_serializer = ServiceOrderProviderSerializer(accomplished_orders, many=True)
+        rejected_serializer = ServiceOrderProviderSerializer(rejected_orders, many=True)
+        canceled_serializer = ServiceOrderProviderSerializer(canceled_orders, many=True)
+        
+        data = {
+            'order_count': order_count,
+            'total_price': total_price if total_price else 0,
+            'accomplished_orders': accomplished_serializer.data,
+            'canceled_orders': canceled_serializer.data,
+            'rejected_orders': rejected_serializer.data
+        }
+        return Response(data, status=status.HTTP_200_OK)
+    
+
+class CurrentProductOrderProviderListView(APIView):
+    # serializer_class = ServiceOrderProviderSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, format=None):
+        provider = Provider.objects.get(phone=request.user.phone)
+        product_orders = ProductOrder.objects.filter(Q(product__store__provider=provider) &
+            (Q(status=Status.PENDING) | Q(status=Status.IN_PROGRESS)))
+        accepted_orders=product_orders.filter(status=Status.IN_PROGRESS)
+        new_order=product_orders.filter(status=Status.PENDING)
+        # Calculate the number of orders
+        order_count = product_orders.count()
+        
+        # Calculate the total price of orders
+        total_price = product_orders.aggregate(total_price=Sum('product__price'))['total_price']
+        
+        
+        new_orders_serializer = ProductOrderBookSerializer(new_order, many=True)
+        in_progress_serializer = ProductOrderBookSerializer(accepted_orders, many=True)
+        data = {
+            'order_count': order_count,
+            'total_price': total_price if total_price else 0,
+            'new_orders': new_orders_serializer.data,
+            'in_progress_orders':in_progress_serializer.data
+        }
+        return Response(data, status=status.HTTP_200_OK)
+    
+    
+class PreviousProductOrderProviderListView(APIView):
+    serializer_class = ProductOrderBookSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, format=None):
+        provider = Provider.objects.get(phone=request.user.phone)
+        product_orders = ProductOrder.objects.filter(
+            Q(product__store__provider=provider) &
+            (Q(status=Status.CANCELLED) | Q(status=Status.COMPLETED) | Q(status=Status.REJECTED))
+        )
+        accomplished_orders = product_orders.filter(status=Status.COMPLETED)
+        rejected_orders = product_orders.filter(status=Status.REJECTED)
+        canceled_orders = product_orders.filter(status=Status.CANCELLED)
+
+        # Calculate the number of orders
+        order_count = accomplished_orders.count()
+
+        # Calculate the total price of orders
+        total_price = product_orders.aggregate(total_price=Sum('product__price'))['total_price']
+
+        accomplished_serializer = ProductOrderBookSerializer(accomplished_orders, many=True)
+        rejected_serializer = ProductOrderBookSerializer(rejected_orders, many=True)
+        canceled_serializer = ProductOrderBookSerializer(canceled_orders, many=True)
+        
+        data = {
+            'order_count': order_count,
+            'total_price': total_price if total_price else 0,
+            'accomplished_orders': accomplished_serializer.data,
+            'canceled_orders': canceled_serializer.data,
+            'rejected_orders': rejected_serializer.data
+        }
+        return Response(data, status=status.HTTP_200_OK)
+
+
     
 class ProductOrderProviderAccomplishedclassView(APIView):
     permission_classes = [permissions.IsAuthenticated]
-    def patch(self, request, pk):
+    def post(self, request, pk):
         try:
             product_order = ProductOrder.objects.get(pk=pk)
         except ProductOrder.DoesNotExist:
             return Response({'error': 'Product order not found.'}, status=status.HTTP_404_NOT_FOUND)
-
-        accomplished = request.data.get('accomplished', False)
-        product_order.accomplished = accomplished
+        if product_order.status==Status.COMPLETED:
+            return Response({'error': 'Product order already complated.'}, status=status.HTTP_409_CONFLICT)
+        product_order.status = Status.COMPLETED
         product_order.save()
 
-        return Response({'success': 'Product order updated successfully.'}, status=status.HTTP_200_OK)
+        return Response({'order_status':product_order.status})
         
         
 class ServiceOrderProviderAccomplishedView(APIView):
     permission_classes = [permissions.IsAuthenticated]
-    def patch(self, request, pk):
+    def post(self, request, pk):
         try:
             service_order = ServiceOrder.objects.get(pk=pk)
         except ServiceOrder.DoesNotExist:
             return Response({'error': 'Service order not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-        accomplished = request.data.get('accomplished', False)
-        service_order.accomplished = accomplished
+        if service_order.status==Status.COMPLETED:
+            return Response({'error': 'Service order already complated.'}, status=status.HTTP_409_CONFLICT)
+        service_order.status = Status.COMPLETED
         service_order.save()
 
-        return Response({'success': 'Service order updated successfully.'}, status=status.HTTP_200_OK)
+        return Response({'order_status':service_order.status})
         
 
 class ProductOrderProviderAcceptView(APIView):
@@ -111,48 +226,52 @@ class ProductOrderProviderAcceptView(APIView):
 
     def get(self, request, pk, format=None):
         product_order = self.get_object(pk)
-        serializer = ProductOrderProviderAcceptSerializer(product_order)
+        serializer = ProductOrderBookSerializer(product_order)
         return Response(serializer.data)
 
     def put(self, request, pk, format=None):
         product_order = self.get_object(pk)
-        serializer = ProductOrderProviderAcceptSerializer(product_order, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
+        accepted=request.data['accepted']
+        if accepted==True:
+            product_order.status=Status.IN_PROGRESS
+            product_order.save()
             # Notify the user
-            message = ""
-            accept = serializer.validated_data.get("accept", False)
-            if accept:
-                message = str(product_order.product.store) + " accepted the request to book a " + str(
-                    product_order.product.name)
-            else:
-                message = str(product_order.product.store) + " rejected the request to book a " + str(
-                    product_order.product.name)
-            notification = Notification.objects.create(
-                recipient=product_order.product.store.provider,
-                message=message,
-                type="Provider_product_order",
-                item_id=product_order.id
-            )
-            group_name = 'user_' + str(product_order.customer.id)
-            print(group_name)
-            channel_layer = get_channel_layer()
-            async_to_sync(channel_layer.group_send)(
-                str(group_name),
-                {
-                    'type': 'send_notification',
-                    'notification': {
-                        'id': notification.id,
-                        'message': message,
-                        'timestamp': notification.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
-                        'type': notification.type,
-                        'item_id': notification.item_id
-                    }
+        else:
+            product_order.status=Status.REJECTED
+            product_order.save()
+            
+        message = ""
+        if accepted==True:
+            message = str(product_order.product.store) + " accepted the request to book a " + str(
+                product_order.product.name)
+        else:
+            message = str(product_order.product.store) + " rejected the request to book a " + str(
+                product_order.product.name)
+        notification = Notification.objects.create(
+            recipient=product_order.product.store.provider,
+            message=message,
+            type="Provider_product_order",
+            item_id=product_order.id
+        )
+        group_name = 'user_' + str(product_order.customer.id)
+        print(group_name)
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            str(group_name),
+            {
+                'type': 'send_notification',
+                'notification': {
+                    'id': notification.id,
+                    'message': message,
+                    'timestamp': notification.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+                    'type': notification.type,
+                    'item_id': notification.item_id
                 }
-            )
+            }
+        )
 
-            return Response(serializer.data)
-        return Response(error_handler(serializer.errors), status=status.HTTP_400_BAD_REQUEST)
+        return Response({'order_status':product_order.status})
+   
 
 class ServiceOrderProviderAcceptView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -164,44 +283,47 @@ class ServiceOrderProviderAcceptView(APIView):
             return Response({"error":"Oreder not found"})
     def get(self, request, pk, format=None):
         service_order = self.get_object(pk)
-        serializer = ServiceOrderProviderAcceptSerializer(service_order)
+        serializer = ServiceBookOrderSerializer(service_order)
         return Response(serializer.data)
 
     def put(self, request, pk, format=None):
         service_order = self.get_object(pk)
-        serializer = ServiceOrderProviderAcceptSerializer(service_order, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            #notify the user
-            message = ""
-            accept = serializer.validated_data.get("accept", False)
-            if accept:
-                message = str(service_order.service.store) + " accepted the request to book a " + str(
+        accepted=request.data['accepted']
+        message = ""
+        if accepted==True:
+            service_order.status=Status.IN_PROGRESS
+            service_order.save()
+            message = str(service_order.service.store) + " accepted the request to book a " + str(
                     service_order.service.name)
-            else:
-                message = str(service_order.service.store) + " rejected the request to book a " + str(
+           
+        else:
+            service_order.status=Status.REJECTED
+            service_order.save()
+            message = str(service_order.service.store) + " rejected the request to book a " + str(
                     service_order.service.name)
-            notification = Notification.objects.create(recipient=service_order.service.store.provider, message=message,type="Provider_service_order",item_id=service_order.id)
-            group_name='user_'+str(service_order.customer.id)
-            print(group_name)
-            channel_layer = get_channel_layer()
-            async_to_sync(channel_layer.group_send)(
-                str(group_name),
-                {
-                    'type': 'send_notification',
-                    'notification': {
-                        'id': notification.id,
-                        'message': message,
-                        'timestamp': notification.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
-                        'type':notification.type,
-                        'item_id':notification.item_id
-                    }
-                }
-            )
-                
+            
                
-            return Response(serializer.data)
-        return Response(error_handler(serializer.errors), status=status.HTTP_400_BAD_REQUEST)
+        notification = Notification.objects.create(recipient=service_order.service.store.provider, message=message,type="Provider_service_order",item_id=service_order.id)
+        group_name='user_'+str(service_order.customer.id)
+        print(group_name)
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            str(group_name),
+            {
+                'type': 'send_notification',
+                'notification': {
+                    'id': notification.id,
+                    'message': message,
+                    'timestamp': notification.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+                    'type':notification.type,
+                    'item_id':notification.item_id
+                }
+            }
+        )
+        return Response({'order_status':service_order.status})
+            
+        
+
 
 class ServiceAndProductListView(APIView):
     permission_classes = [permissions.IsAuthenticated]

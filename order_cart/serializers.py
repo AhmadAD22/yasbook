@@ -49,10 +49,13 @@ class ProductOrderBookSerializer(serializers.ModelSerializer):
     product=ProductSerializer(read_only=True)
     store_name=serializers.CharField(source='product.store.name', read_only=True)
     total_price = serializers.SerializerMethodField()
+    coupon=serializers.CharField(source='coupon.name', read_only=True)
+    customer=CustomerSerializer()
     class Meta:
         model = ProductOrder
-        exclude = ['collected']
-        read_only_fields = ['customer','accept']
+        fields = ['id','product','customer','store_name','quantity','total_price','coupon','price_with_coupon','status']
+        read_only_fields = ['customer',]
+        
     def get_total_price(self, obj):
         if obj.product.offers:
             return obj.quantity * obj.product.price_after_offer
@@ -61,12 +64,13 @@ class ProductOrderBookSerializer(serializers.ModelSerializer):
         
 
 class ServiceBookOrderSerializer(serializers.ModelSerializer):
-    
+    customer=CustomerSerializer()
     specialist=serializers.CharField(source='specialist.name', read_only=True)
     service_name=serializers.CharField(source='service.name', read_only=True)
     price=serializers.CharField(source='service.price', read_only=True)
     price_after_offer=serializers.CharField(source='service.price_after_offer', read_only=True)
     offer=serializers.CharField(source='service.offers', read_only=True)
+    coupon=serializers.CharField(source='coupon.name', read_only=True)
     main_service=serializers.CharField(source='service.main_service', read_only=True)
     category=serializers.CharField(source='service.main_service.category', read_only=True)
     store_name = serializers.SerializerMethodField()
@@ -80,16 +84,17 @@ class ServiceBookOrderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ServiceOrder
-        fields = ('customer', 'main_service','service_name','price','offer','price_after_offer','service', 'category','specialist', 'time_start', 'date', 'duration', 'accept', 'store_name', 'store_image')
+        fields = ('customer', 'main_service','service_name','price','offer','price_after_offer','coupon','price_with_coupon','service', 'category','specialist', 'time_start', 'date', 'duration', 'status', 'store_name', 'store_image')
 
 ###############PROVIDER##################################
 class ServiceOrderProviderSerializer(serializers.ModelSerializer):
     customer=CustomerSerializer(read_only=True)
+    service_name=serializers.CharField(source='service.name', read_only=True)
 
     class Meta:
         model = ServiceOrder
-        fields = '__all__'
-        read_only_fields = ['customer','accept']
+        fields = ['id','time_start', 'date','service_name','customer']
+        read_only_fields = ['customer',]
 
 
 class ProductOrderProviderSerializer(serializers.ModelSerializer):
@@ -105,7 +110,7 @@ class ServiceOrderProviderAcceptSerializer(serializers.ModelSerializer):
     service = ServiceSerializer(read_only=True)
     class Meta:
         model = ServiceOrder
-        fields = ['accept','specialist','service','date','duration']
+        fields = ['specialist','service','date','duration','status']
         read_only_fields = ['customer','date','duration']
 
 class ProductOrderProviderAcceptSerializer(serializers.ModelSerializer):

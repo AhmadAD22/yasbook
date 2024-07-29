@@ -1,7 +1,16 @@
 from django.db import models
 from provider_details.models import *
 from auth_login.models import *
+import decimal
+from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal, InvalidOperation
 
+class Status(models.TextChoices):
+    PENDING = 'PENDING','Pending'
+    IN_PROGRESS = 'IN_PROGRESS','In Progress'
+    COMPLETED = 'COMPLETED','Completed'
+    CANCELLED = 'CANCELLED','Cancelled'
+    REJECTED='REJECTED','Rejected'   
 
 class Cart(models.Model):
     customer = models.OneToOneField(Customer, on_delete=models.CASCADE)
@@ -41,10 +50,19 @@ class ProductOrder(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField(default=1)
-    accept = models.BooleanField(default=False, verbose_name='موافقة التاجر',null=True,blank=True)
+    status = models.CharField(max_length=20, choices=Status.choices)
     collected = models.BooleanField(default=False, verbose_name='تم تحصيلها', null=True, blank=True)
-    accomplished=models.BooleanField(default=False, verbose_name='تم انجازه',null=True,blank=True)
     date= models.DateTimeField(auto_now_add=True, verbose_name='تاريخ الإنشاء',blank=True,null=True)
+    coupon=models.ForeignKey(Coupon, on_delete=models.SET_NULL,null=True,blank=True)
+    def total_price(self):
+        return self.quantity * self.product.price_after_offer
+    def price_with_coupon(self):
+        price = self.total_price()
+        if self.coupon:
+            coupon_percent = decimal.Decimal(self.coupon.value) / 100
+            price = price - (price * coupon_percent)
+        return round(price, 2)
+
 
 
 
@@ -59,9 +77,23 @@ class ServiceOrder(models.Model):
     time_start=models.TimeField(verbose_name='وقت البدء' ,null=True)
     date = models.DateTimeField( verbose_name='تاريخ الحجز',blank=True,null=True)
     duration= models.PositiveIntegerField(verbose_name='مدة الخدمة (بالدقائق)', blank=True, null=True)
-    accept = models.BooleanField(default=False, verbose_name='موافقة التاجر',null=True,blank=True)
-    accomplished=models.BooleanField(default=False, verbose_name='تم انجازه',null=True,blank=True)
+    status = models.CharField(max_length=20, choices=Status.choices)
     collected = models.BooleanField(default=False, verbose_name='تم تحصيلها', null=True, blank=True)
+    coupon=models.ForeignKey(Coupon, on_delete=models.SET_NULL,null=True,blank=True)
+    @property
+    def price(self):
+            return decimal.Decimal(self.service.price_after_offer)
+
+    def price_with_coupon(self):
+            price = self.price
+            price=Decimal(price)
+            if self.coupon:
+                coupon_percent = Decimal(self.coupon.value) / 100
+                price = price - (price * coupon_percent)
+                return price
+            return price
+        
+        
     
     
 

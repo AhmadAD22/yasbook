@@ -29,7 +29,7 @@ class ProviderRegisterView(APIView):
             serialized.save(otp=otp) 
             sms = SmsSender()
             if sms.send_otp(request.data['phone'].replace('0', '966', 1), f"Your OTP for registration is: {otp}"):
-                return Response("created", status=status.HTTP_201_CREATED)
+                return Response({'result': 'Wait to recive OTP message'}, status=status.HTTP_201_CREATED)
             else:
                 return Response({'error': 'Failed to send OTP", "SMS_SEND_FAILED'}, status=status.HTTP_502_BAD_GATEWAY)
         else:
@@ -79,8 +79,9 @@ class ProviderCreateAccountAPIView(APIView):
         
         phone = request.data['phone']
         code = request.data['code']
+        print(phone)
         if PhoneVitrifactionSerializer(data=request.data).is_valid(raise_exception=True):
-            otp=OTPRequest.objects.filter(phone=request.data['phone'],
+            otp=OTPRequest.objects.filter(phone=phone,
                                         code=code,                                            
                                         type=OTPRequest.Types.REGISTER).first()
             pendingProvider=otp.pendingProvider    
@@ -127,7 +128,7 @@ class ProviderAuthToken(ObtainAuthToken):
         User = get_user_model()
         try:
             user = MyUser.objects.get(phone=phone)
-            provider = Provider.objects.get(username=user.username)
+            provider = Provider.objects.get(phone=user.phone)
 
         except User.DoesNotExist:
             return Response({'error': 'not a provider account'}, status=status.HTTP_400_BAD_REQUEST)

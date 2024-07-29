@@ -1,6 +1,6 @@
 from django.urls import path
 from .views import *
-from .all_views.coupon_views import *
+
 urlpatterns = [
    ## for provider app
     path('update-store/', StoreUpdateView.as_view(), name='update-store'),
@@ -33,6 +33,8 @@ urlpatterns = [
     path('unfollow-store/<int:store_id>/', FollowingStoreDeleteView.as_view(), name='follow-store-delete'),
 
     # path('features-stores/<int:main_service_id>/', FeaturedStoreFollowersOrderView.as_view(), name='store-followers-order'),
+    path('common-questions/', CommonQuestionAPIView.as_view(), name='common-questions'),
+    path('common-questions/<int:pk>/', CommonQuestionDetailsAPIView.as_view(), name='common-question-details'),
     path('store/<int:pk>/', StoreDetailView.as_view(), name='store-detail'),
     path('store-services/<int:main_service_id>/', ServiceListByMainServiceView.as_view(), name='service-list-by-store-and-main-service'),
     path('store-services/<int:store_id>/<int:main_service_id>/', ServiceListByStoreAndMainServiceView.as_view(), name='service-list-by-store-and-main-service'),
@@ -46,11 +48,13 @@ urlpatterns = [
     
     ##Reports
     path('product-orders-report/', ProductOrderReportAPIView.as_view(), name='product-orders-report'),
-    path('service-orders-report/', SubscriptionOrderDetailsAPIView.as_view(), name='service-orders-report'),
+    path('service-orders-report/', ServiceOrderReportAPIView.as_view(), name='service-orders-report'),
+    path('specialist-service-orders-report/', SpecialistServiceOrderReportAPIView.as_view(), name='service-orders-report'),
+    path('warehouse-report/', warehouseReportAPIView.as_view(), name='service-orders-report'),
     
     #4
-    path('coupons/', CouponListCreateAPIView.as_view(), name='coupon-list-create'),
-    path('coupons/<int:pk>/', CouponRetrieveUpdateDestroyAPIView.as_view(), name='coupon-retrieve-update-destroy'),
+    path('coupons/', CouponAPIView.as_view(), name='coupon-list-create'),
+    path('coupons/<int:coupon_id>/', CouponDeleteUpdateAPIView.as_view(), name='coupon-detail'),
 
 
    

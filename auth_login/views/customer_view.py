@@ -20,10 +20,12 @@ from django.contrib.auth.hashers import make_password
 #########  for customer views
 
 class RegisterView(APIView):
+    authentication_classes = []  # Disable authentication
+    permission_classes = []  # Disable permission checks
     def post(self,request,*args,**kwargs):
         serialized=PendingClientSerializer(data=request.data)
           # check if user exists
-        if Customer.objects.filter(Q(phone=request.data['phone'])|Q(email=request.data['email'])).exists():
+        if MyUser.objects.filter(Q(phone=request.data['phone'])|Q(email=request.data['email'])).exists():
             return Response({'error': 'Phone number or email already exists'}, status=status.HTTP_409_CONFLICT)
         
         if OTPRequest.checkRateLimitReached(phone=request.data['phone']):
@@ -33,12 +35,13 @@ class RegisterView(APIView):
             serialized.save(otp=otp) 
             sms = SmsSender()
             if sms.send_otp(request.data['phone'].replace('0', '966', 1), f"Your OTP for registration is: {otp}"):
-                return Response("created", status=status.HTTP_201_CREATED)
+                return Response({'result': 'Wait to recive OTP message'}, status=status.HTTP_201_CREATED)
             else:
                 return Response({'error': 'Failed to send OTP", "SMS_SEND_FAILED'}, status=status.HTTP_502_BAD_GATEWAY)
         else:
             return Response(error_handler(serialized.errors), status=status.HTTP_400_BAD_REQUEST)
-            
+
+
 class PhoneVerifyView(APIView):
     authentication_classes = []  # Disable authentication
     permission_classes = []  # Disable permission checks

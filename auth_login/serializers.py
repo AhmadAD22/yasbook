@@ -73,15 +73,18 @@ class CustomerAddressSerializer(serializers.ModelSerializer):
 
 ###### provider serializers
 class ProviderSerializer(serializers.ModelSerializer):
-    remaining_duration = serializers.SerializerMethodField()
+    remaining_duration = serializers.SerializerMethodField(read_only=True)
     class Meta:
         model = Provider
         fields = ['id','username','name', 'phone','remaining_duration']
     def get_remaining_duration(self, obj):
-        provider_subscription =ProviderSubscription.objects.get(provider=obj) 
-        if provider_subscription:
-            return provider_subscription.remaining_duration()
-        return None
+        try:
+             provider_subscription =ProviderSubscription.objects.get(provider=obj) 
+        except ProviderSubscription.DoesNotExist:
+            return 0
+        
+        return provider_subscription.remaining_duration()
+        
 
 
 class   ProviderCreateAccountSerializer(serializers.ModelSerializer):

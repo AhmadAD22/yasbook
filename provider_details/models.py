@@ -11,6 +11,7 @@ class Store(models.Model):
     image = models.ImageField(upload_to='media/provider/store/',null=True,blank=True, verbose_name='رفع الصورة')
     name = models.CharField(max_length=255, verbose_name=' الإسم التجاري',null=True,blank=True,)
     about = models.TextField(blank=True, null=True, verbose_name='الوصف')
+    whatsapp_link = models.URLField(max_length=250,null=True)
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاريخ الإنشاء',blank=True,null=True)
     updated_on = models.DateTimeField(auto_now=True, verbose_name='تاريخ التحديث',blank=True,null=True)
     
@@ -23,6 +24,13 @@ class Store(models.Model):
         super(Store, self).delete(*args, **kwargs)
     def __str__(self):
         return self.provider.name
+    
+class CommonQuestion(models.Model):
+    store=models.ForeignKey(Store,on_delete=models.CASCADE,related_name="storeCommonQuestion")
+    question=models.CharField(max_length=100)
+    answer=models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاريخ الإنشاء',blank=True,null=True)
+    updated_on =models.DateTimeField(auto_now=True, verbose_name='تاريخ التحديث',blank=True,null=True)
 
 
 class StoreAdminServices(models.Model):
@@ -108,7 +116,7 @@ class Service(models.Model):
         if self.offers is not None and self.price is not None:
             discount = Decimal(float(self.price)) * (Decimal(self.offers) / 100)
             return Decimal(self.price) - discount
-        return self.price
+        return Decimal(self.price)
 
     def delete(self, *args, **kwargs):
         # Delete the associated image file
@@ -125,7 +133,7 @@ class Product(models.Model):
     description = models.TextField(blank=True, null=True, verbose_name='الوصف')
     price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='السعر')
     offers = models.IntegerField(validators=[MinValueValidator(0), MaxValueValidator(100)], default=0,blank=False, verbose_name='الخصم')
-    hours_Service = models.TimeField(blank=True, null=True, verbose_name='ساعات الخدمة')
+    quantity=models.PositiveIntegerField()
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاريخ الإنشاء',blank=True,null=True)
     updated_on = models.DateTimeField(auto_now=True, verbose_name='تاريخ التحديث',blank=True,null=True)
 
@@ -158,6 +166,7 @@ class Reviews(models.Model):
 
     
 class Coupon(models.Model):
+    provider=models.ForeignKey(Provider, on_delete=models.CASCADE)
     name=models.CharField(max_length=150)
     code=models.CharField( max_length=10)
     value=models.IntegerField(validators=[MinValueValidator(0), MaxValueValidator(100)], default=0,blank=True,null=True)

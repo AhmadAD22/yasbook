@@ -126,7 +126,7 @@ class ProductAdmin(admin.ModelAdmin):
 
     fieldsets = (
         ('Product Information', {
-            'fields': ('store', 'name', 'description', 'price', 'offers', 'hours_Service')
+            'fields': ('store', 'name', 'description', 'price', 'offers','quantity')
         }),
         ('Image and Dates', {
             'fields': ('image_display', 'created_at', 'updated_on'),
@@ -186,7 +186,7 @@ admin.site.register(StoreOpening)
 admin.site.register(StoreGallery)
 admin.site.register(StoreAdminServices)
 admin.site.register(FollowingStore)
-
+admin.site.register(Coupon)
 
 
 

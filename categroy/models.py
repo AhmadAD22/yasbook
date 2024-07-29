@@ -2,14 +2,15 @@ from django.db import models
 import os
 
 class Category(models.Model):
-    name = models.CharField(max_length=255, verbose_name='اسم التصنيف')
-    image = models.ImageField(upload_to='media/category/',null=True, verbose_name='رفع الصورة')
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاريخ الإنشاء',blank=True,null=True)
-    updated_on = models.DateTimeField(auto_now=True, verbose_name='تاريخ التحديث',blank=True,null=True)
+    name = models.CharField(max_length=50)
+    image = models.ImageField(upload_to='media/category/',null=True)
+    created_at = models.DateTimeField(auto_now_add=True,blank=True,null=True)
+    updated_on = models.DateTimeField(auto_now=True,blank=True,null=True)
     
 
     def __str__(self):
         return self.name
+    
     def delete(self, *args, **kwargs):
         # Delete the associated image file
         if self.image:

@@ -16,9 +16,9 @@ from datetime import datetime
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
-class SubscriptionOrderDetailsAPIView(APIView):
+class ServiceOrderReportAPIView(APIView):
     def get(self, request):
-        provider = Provider.objects.get(username=request.user.username)
+        provider = Provider.objects.get(phone=request.user.phone)
         
         try:
           subscription=ProviderSubscription.objects.get(provider=provider)
@@ -29,7 +29,7 @@ class SubscriptionOrderDetailsAPIView(APIView):
             return Response(error_messages, status=status.HTTP_400_BAD_REQUEST)
         store = Store.objects.get(provider=provider)
         services = Service.objects.filter(store=store)
-        service_orders = ServiceOrder.objects.filter(service__in=services,accept=True,accomplished=True)
+        service_orders = ServiceOrder.objects.filter(service__in=services,status=Status.COMPLETED)
 
         if request.GET.get('collected_filter') == 'collected':
             service_orders = service_orders.filter(collected=False)
@@ -43,18 +43,55 @@ class SubscriptionOrderDetailsAPIView(APIView):
             service_orders = service_orders.filter(date__range=(start_date, end_date))
 
         total_service = service_orders.count()
+        total_app_fee=total_service * subscription.service_profit
+        total_service_price = sum(order.price_with_coupon() for order in service_orders)
         serializer = ServiceOrderReportSerializer(service_orders, many=True)
 
         context = {
             'service_orders': serializer.data,
-            'total_service': total_service
+            'total_service_price': total_service_price,
+            'total_app_fee':total_app_fee   
+        }
+        return Response(context)
+    
+class SpecialistServiceOrderReportAPIView(APIView):
+    def get(self, request):
+        provider = Provider.objects.get(phone=request.user.phone)
+        
+        try:
+          subscription=ProviderSubscription.objects.get(provider=provider)
+          if (subscription.is_duration_finished()):
+                return Response({'error':'Your subscription duration is finished'})
+        except:
+            error_messages={"error":"You do not have a subscription"}
+            return Response(error_messages, status=status.HTTP_400_BAD_REQUEST)
+        specialist_id=request.GET.get('specialist_id')
+        specialist_orders = ServiceOrder.objects.filter(specialist__id=specialist_id)
+        if request.GET.get('collected_filter') == 'collected':
+            specialist_orders = specialist_orders.filter(collected=False)
+
+        start_date = request.GET.get('start_date')
+        end_date = request.GET.get('end_date')
+
+        if start_date and end_date:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d')
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').replace(hour=23, minute=59, second=59)
+            specialist_orders = specialist_orders.filter(date__range=(start_date, end_date))
+
+        total_complated_service = specialist_orders.filter(status=Status.COMPLETED).count()
+        total_app_fee=total_complated_service * subscription.service_profit
+        serializer = SpecialistServiceOrderReportSerializer(specialist_orders, many=True)
+
+        context = {
+            'service_orders': serializer.data,
+            'total_complated_service': total_complated_service,
+            'total_app_fee':total_app_fee
         }
         return Response(context)
 
-
 class ProductOrderReportAPIView(APIView):
     def get(self, request):
-        provider = Provider.objects.get(username=request.user.username)
+        provider = Provider.objects.get(phone=request.user.phone)
         
         try:
           subscription=ProviderSubscription.objects.get(provider=provider)
@@ -67,7 +104,7 @@ class ProductOrderReportAPIView(APIView):
             return Response(error_messages, status=status.HTTP_400_BAD_REQUEST)
         store = Store.objects.get(provider=provider)
         products = Product.objects.filter(store=store)
-        product_orders = ProductOrder.objects.filter(product__in=products,accept=True,accomplished=True)
+        product_orders = ProductOrder.objects.filter(product__in=products,status=Status.COMPLETED)
 
         if request.GET.get('collected') == 'false':
             product_orders = product_orders.filter(collected=False)
@@ -81,25 +118,81 @@ class ProductOrderReportAPIView(APIView):
             product_orders = product_orders.filter(date__range=[start_date, end_date])
 
         total_products = product_orders.count()
+        total_app_fee=total_products*subscription.product_profit
+        total_product_price = sum(order.price_with_coupon() for order in product_orders)
         serializer = ProductOrderReportSerializer(product_orders, many=True)
 
         context = {
             'product_orders': serializer.data,
-            'total_products': total_products,
+            'total_app_fee': total_app_fee,
+            'total_product_price':total_product_price
+        }
+        return Response(context)
+
+class warehouseReportAPIView(APIView):
+    def get(self, request):
+        provider = Provider.objects.get(phone=request.user.phone)
+        
+        try:
+          subscription=ProviderSubscription.objects.get(provider=provider)
+          if (subscription.is_duration_finished()):
+                return Response({'error':'Your subscription duration is finished'})
+          if not subscription.store_subscription:
+               return Response({'error':'Your have not Products  subscription'})
+        except:
+            error_messages={"error":"You do not have a subscription"}
+            return Response(error_messages, status=status.HTTP_400_BAD_REQUEST)
+        store = Store.objects.get(provider=provider)
+        products = Product.objects.filter(store=store)
+        product_orders = ProductOrder.objects.filter(Q(product__in=products) &
+            (Q(status=Status.COMPLETED) | Q(status=Status.IN_PROGRESS)))
+        
+
+        # Check if start_date and end_date are provided
+        start_date = request.GET.get('start_date')
+        end_date = request.GET.get('end_date')
+        if start_date and end_date:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+            product_orders = product_orders.filter( date__range=[start_date, end_date])
+            
+            products = products.filter(id__in=product_orders.values('product_id').distinct())
+
+        
+        total_remaining_quantity = sum(product.quantity for product in products)
+        total_reserved_quantity= sum(order.quantity for order in product_orders)
+        
+        serializer = warehouseReportSerializer(products, many=True)
+
+        context = {
+    
+            'product': serializer.data,
+            'total_remaining_quantity': total_remaining_quantity,
+            'total_reserved_quantity':total_reserved_quantity
         }
         return Response(context)
 
 
-
 ### for provider app
-class StoreUpdateView(generics.RetrieveUpdateAPIView):
-    queryset = Store.objects.all()
-    serializer_class = StoreSerializer
+class StoreUpdateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get_object(self):
-        provider=Provider.objects.get(username=self.request.user.username)
+        provider = Provider.objects.get(phone=self.request.user.phone)
         return Store.objects.get(provider=provider)
+
+    def get(self, request, *args, **kwargs):
+        store = self.get_object()
+        serializer = StoreDetailsSerializer(store)
+        return Response(serializer.data)
+
+    def put(self, request, *args, **kwargs):
+        store = self.get_object()
+        serializer = StoreSerializer(store, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
     
 
     
@@ -108,17 +201,18 @@ class StoreSpecialistListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, format=None):
-        provider = Provider.objects.get(username=request.user.username)
+        provider = Provider.objects.get(phone=request.user.phone)
         queryset = StoreSpecialist.objects.filter(store__provider=provider)
         serializer = self.serializer_class(queryset, many=True)
         return Response(serializer.data)
 
     def post(self, request, format=None):
-        provider = Provider.objects.get(username=request.user.username)
+        provider = Provider.objects.get(phone=request.user.phone)
         store = Store.objects.get(provider=provider)
         specialistworks = request.data.get("specialistworks")
+        
         specialistworks_list = specialistworks.split(',')
-        converted_list = [int(item) for item in specialistworks_list]
+        converted_list = [int(item) for item in specialistworks_list if item.strip()]
         
         # Create a mutable copy of request.data
         mutable_data = request.data.copy()
@@ -164,12 +258,12 @@ class StoreOpeningListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        provider=Provider.objects.get(username=self.request.user.username)
+        provider=Provider.objects.get(phone=self.request.user.phone)
 
         return StoreOpening.objects.filter(store__provider=provider)
 
     def perform_create(self, serializer):
-        provider=Provider.objects.get(username=self.request.user.username)
+        provider=Provider.objects.get(phone=self.request.user.phone)
         store=Store.objects.get(provider=provider)
         serializer.save(store=store)
 
@@ -185,11 +279,11 @@ class StoreGalleryListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        provider = Provider.objects.get(username=self.request.user.username)
+        provider = Provider.objects.get(phone=self.request.user.phone)
         return StoreGallery.objects.filter(store__provider=provider)
 
     def perform_create(self, serializer):
-        provider = Provider.objects.get(username=self.request.user.username)
+        provider = Provider.objects.get(phone=self.request.user.phone)
         store = Store.objects.get(provider=provider)
         serializer.save(store=store)
 
@@ -206,7 +300,7 @@ class ServiceListCreateView(APIView):
         return ServiceSerializer
     
     def get(self, request, format=None):
-        provider = Provider.objects.get(username=request.user.username)
+        provider = Provider.objects.get(phone=request.user.phone)
         # Check if the provider have subscription or not  
         try:
             provider_subscription=ProviderSubscription.objects.get(provider=provider)
@@ -219,7 +313,7 @@ class ServiceListCreateView(APIView):
         return Response(serializer.data)
 
     def post(self, request, format=None):
-        provider = Provider.objects.get(username=request.user.username)
+        provider = Provider.objects.get(phone=request.user.phone)
         store = Store.objects.get(provider=provider)
         # Check if the provider have subscription or not  
         try:
@@ -282,7 +376,7 @@ class ProductListCreateView(APIView):
     permission_classes = [IsAuthenticated]
     
     def get(self, request):
-        provider = Provider.objects.get(username=request.user.username)
+        provider = Provider.objects.get(phone=request.user.phone)
         # Check if the provider have subscription or not  
         try:
           subscription=ProviderSubscription.objects.get(provider=provider)
@@ -300,7 +394,7 @@ class ProductListCreateView(APIView):
         return Response(error_messages, status=status.HTTP_400_BAD_REQUEST)
 
     def post(self, request):
-        provider = Provider.objects.get(username=request.user.username)
+        provider = Provider.objects.get(phone=request.user.phone)
         store = Store.objects.get(provider=provider)
         # Check if the provider have subscription or not  
         try:
@@ -345,14 +439,14 @@ class ReviewsListCreateAPIView(APIView):
 
     def get(self, request, format=None):
         # Assuming you want reviews related to the authenticated user's store
-        customer = Customer.objects.get(username=request.user.username)
+        customer = Customer.objects.get(phone=request.user.phone)
         reviews = Reviews.objects.filter(customer=customer)
         serializer = self.serializer_class(reviews, many=True)
         return Response(serializer.data)
 
     def post(self, request, format=None):
         # Assuming you want to associate the review with the authenticated user's store
-        customer = Customer.objects.get(username=request.user.username)
+        customer = Customer.objects.get(phone=request.user.phone)
         serializer = self.serializer_class(data=request.data)
         if serializer.is_valid():
             serializer.save(customer=customer)
@@ -391,7 +485,7 @@ class ServiceListByMainServiceView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        provider = Provider.objects.get(username=self.request.user.username)
+        provider = Provider.objects.get(phone=self.request.user.phone)
         store = Store.objects.get(provider=provider)
         main_service_id = self.kwargs['main_service_id']
         return Service.objects.filter(store=store, main_service=main_service_id)
@@ -412,7 +506,7 @@ class FollowingStoreListView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        customer=Customer.objects.get(username=self.request.user.username)
+        customer=Customer.objects.get(phone=self.request.user.phone)
         return FollowingStore.objects.filter(customer=customer)
                
 class FollowingStoreCreateView(generics.CreateAPIView):
@@ -422,7 +516,7 @@ class FollowingStoreCreateView(generics.CreateAPIView):
 
     
     def perform_create(self, serializer):
-        customer=Customer.objects.get(username=self.request.user.username)
+        customer=Customer.objects.get(phone=self.request.user.phone)
         store = serializer.validated_data['store']
         try:
             FollowingStore.objects.create(customer=customer, store=store)
@@ -434,7 +528,7 @@ class FollowingStoreDeleteView(generics.DestroyAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        customer=Customer.objects.get(username=self.request.user.username)
+        customer=Customer.objects.get(phone=self.request.user.phone)
 
         return FollowingStore.objects.filter(customer=customer)
 
@@ -467,7 +561,7 @@ class FeaturedStoreNearbyStoreOrderAndStoryView(APIView):
         featuredstoresserializer=NearbyFeaturedStoreOrderSerializer(featuredstores,many=True)
         ####nearest_stores######
         #Get nearest_stores by customer location and stores ids that have the main_service_id
-        customer=Customer.objects.get(username=self.request.user.username)
+        customer=Customer.objects.get(phone=self.request.user.phone)
         try:
         #Get customer for nearby stores
             nearbystores=get_nearest_store(customer_latitude=customer.latitude,customer_longitude=customer.longitude,store_ids=filtered_stores)
@@ -507,7 +601,7 @@ class NearbyStoreOrderByMainServiceView(APIView):
     permission_classes = [IsAuthenticated]
     def post(self, request, *args, **kwargs):
         main_service_ids=request.data.get('main_service_ids')
-        customer=Customer.objects.get(username=self.request.user.username)
+        customer=Customer.objects.get(phone=self.request.user.phone)
         provider_subscripted_ids=[]
         subscriptions=ProviderSubscription.objects.all()
         for subscription in subscriptions:
@@ -559,3 +653,100 @@ class EmailSendingView(APIView):
             return Response({'success': 'Email sent'}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        
+        
+class CommonQuestionAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, format=None):
+        common_questions = CommonQuestion.objects.filter(store__provider__phone=request.user.phone  )
+        serializer = CommonQuestionSerializer(common_questions, many=True)
+        return Response(serializer.data)
+
+    def post(self, request, format=None):
+        store = Store.objects.get(provider__phone=request.user.phone)
+        serializer = CommonQuestionSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(store=store)
+            return Response(serializer.data, status=201)
+        return Response(serializer.errors, status=400)
+    
+class CommonQuestionDetailsAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def put(self, request, pk, format=None):
+        common_question = CommonQuestion.objects.get(pk=pk)
+        serializer = CommonQuestionSerializer(common_question, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
+    
+    
+    
+    #######Coupon
+    
+from django.utils import timezone
+
+class CouponAPIView(APIView):
+    permission_classes=[IsAuthenticated]
+    def get(self, request):
+        current_datetime = timezone.now()
+        expired_coupons = Coupon.objects.filter(provider__phone=request.user.phone, expired__lt=current_datetime)
+        non_expired_coupons = Coupon.objects.filter(provider__phone=request.user.phone, expired__gte=current_datetime)
+
+        expired_serializer = CouponSerializer(expired_coupons, many=True)
+        non_expired_serializer = CouponSerializer(non_expired_coupons, many=True)
+
+        response_data = {
+            'expired_coupons': expired_serializer.data,
+            'non_expired_coupons': non_expired_serializer.data
+        }
+        return Response(response_data)
+
+    def post(self, request):
+        serializer = CouponSerializer(data=request.data)
+        provider = Provider.objects.get(phone=request.user.phone)
+        if serializer.is_valid():
+            expired = serializer.validated_data['expired']
+            if expired < timezone.now():
+                print(timezone.now())
+                print(expired)
+                return Response({'error': 'Coupon has already expired'}, status=status.HTTP_400_BAD_REQUEST)
+            serializer.save(provider=provider)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(error_handler(serializer.errors), status=status.HTTP_400_BAD_REQUEST)
+    
+    
+class CouponDeleteUpdateAPIView(APIView):
+    # ...
+    def get(self, request, coupon_id):
+        try:
+            coupon = Coupon.objects.get(id=coupon_id, provider__phone=request.user.phone)
+        except Coupon.DoesNotExist:
+            return Response({'error': 'Coupon does not found'}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = CouponSerializer(coupon)
+        return Response(serializer.data)
+
+    def put(self, request, coupon_id):
+        try:
+            coupon = Coupon.objects.get(id=coupon_id, provider__phone=request.user.phone)
+        except Coupon.DoesNotExist:
+            return Response({'error': 'Coupon does not found'}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = CouponSerializer(coupon, data=request.data)
+        if serializer.is_valid():
+            expired = serializer.validated_data['expired']
+            if expired < timezone.now():
+                return Response({'error': 'Coupon has already expired'}, status=status.HTTP_400_BAD_REQUEST)
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, coupon_id):
+        try:
+            coupon = Coupon.objects.get(id=coupon_id, provider__phone=request.user.phone)
+        except Coupon.DoesNotExist:
+            return Response({'error': 'Coupon does not found'}, status=status.HTTP_400_BAD_REQUEST)
+        coupon.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

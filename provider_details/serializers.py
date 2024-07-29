@@ -3,37 +3,77 @@ from .models import *
 from auth_login.serializers import CustomerSerializer
 from auth_login.models import ProviderSubscription
 from order_cart.models import *
+from django.db.models import Q,Sum
 
-
+#Order Reports
 class ServiceOrderReportSerializer(serializers.ModelSerializer):
     customer=serializers.CharField(source='customer.name', read_only=True)
     app_fees = serializers.SerializerMethodField()
     service=serializers.CharField(source='service.name', read_only=True)
-    service_price=serializers.CharField(source='service.price', read_only=True)
+    service_price=serializers.SerializerMethodField()
     class Meta:
         model = ServiceOrder
-        fields = ['id','customer', 'service','date','service_price', 'collected','app_fees']
+        fields = ['id','customer', 'service','date','service_price','collected','app_fees']
     def get_app_fees(self, obj):
         provider_subscription =ProviderSubscription.objects.get(provider=obj.service.store.provider) 
         if provider_subscription:
             return provider_subscription.service_profit
         return None
+    def get_service_price(self, obj):
+        return obj.price_with_coupon()
+    
+class SpecialistServiceOrderReportSerializer(serializers.ModelSerializer):
+    app_fees = serializers.SerializerMethodField()
+    service=serializers.CharField(source='service.name', read_only=True)
+    main_service=serializers.CharField(source='service.main_service.name', read_only=True)
+    service_price=serializers.SerializerMethodField()
+    class Meta:
+        model = ServiceOrder
+        fields = ['id','main_service', 'service','date','service_price','status','app_fees']
+    def get_app_fees(self, obj):
+        provider_subscription =ProviderSubscription.objects.get(provider=obj.service.store.provider) 
+        if provider_subscription:
+            return provider_subscription.service_profit
+        return None
+    def get_service_price(self, obj):
+        return obj.price_with_coupon()
 
 class ProductOrderReportSerializer(serializers.ModelSerializer):
     app_fees = serializers.SerializerMethodField()
-    customer=serializers.CharField(source='customer.name', read_only=True)
-    product=serializers.CharField(source='product.name', read_only=True)
-    product_price=serializers.CharField(source='product.price', read_only=True)
+    customer = serializers.CharField(source='customer.name', read_only=True)
+    product = serializers.CharField(source='product.name', read_only=True)
+    product_price = serializers.SerializerMethodField()
+    def get_product_price(self, obj):
+        return obj.price_with_coupon()
+    def get_app_fees(self, obj):
+        provider_subscription =ProviderSubscription.objects.get(provider=obj.product.store.provider) 
+        if provider_subscription:
+            return provider_subscription.service_profit
+        return None
 
     class Meta:
         model = ProductOrder
-        fields = ['id','customer', 'product', 'quantity','product_price', 'accept', 'collected', 'date','app_fees']
+        fields = ['id', 'customer', 'product', 'quantity', 'product_price', 'status', 'collected', 'date', 'app_fees']
         
-    def get_app_fees(self, obj):
-        provider_subscription =ProviderSubscription.objects.get(provider=obj.product.store.provider) 
-        if provider_subscription.store_subscription:
-            return provider_subscription.product_profit
-        return None
+class warehouseReportSerializer(serializers.ModelSerializer):
+    remaining_quantity = serializers.SerializerMethodField(read_only=True)
+    reserved_quantity=serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = Product
+        fields = ['id', 'name',  'remaining_quantity','reserved_quantity']
+
+    def get_remaining_quantity(self, obj):
+        
+        return obj.quantity
+    def get_reserved_quantity(self, obj):
+        product_orders = ProductOrder.objects.filter(Q(product=obj) &
+            (Q(status=Status.COMPLETED) | Q(status=Status.IN_PROGRESS)))
+        total_quantity = product_orders.aggregate(total_quantity=Sum('quantity'))['total_quantity']
+        return total_quantity
+
+    
+
 
 ## for provider app
 class StoreStorySerializer(serializers.ModelSerializer):
@@ -42,12 +82,34 @@ class StoreStorySerializer(serializers.ModelSerializer):
         model = StoreStory
         fields = ['image', ]
         
+class CommonQuestionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CommonQuestion
+        fields = ['id','question', 'answer',]
+        read_only_fields = ['id',]
+        
 class StoreSerializer(serializers.ModelSerializer):
-    
-    story_of_store=StoreStorySerializer(read_only=True)
     class Meta:
         model = Store
-        fields = ['image', 'name', 'about','story_of_store']
+        fields = ['image', 'name', 'about','whatsapp_link']
+        
+class StoreDetailsSerializer(serializers.ModelSerializer):
+    latitude = serializers.CharField(source='provider.latitude',read_only=True)
+    longitude = serializers.CharField(source='provider.longitude',read_only=True)
+    address = serializers.CharField(source='provider.address',read_only=True)
+    openings = serializers.SerializerMethodField()
+    common_question = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Store
+        fields = ['image', 'name', 'about','whatsapp_link', 'latitude', 'longitude','address','openings','common_question']
+    def get_openings(self, obj):
+        # Customize the serialization of 'openings' field here
+        return StoreAOpeningSerializer(obj.storeopening_set.all(), many=True).data
+    def get_common_question(self, obj):
+        # Customize the serialization of 'common_question' field here
+        return CommonQuestionSerializer(CommonQuestion.objects.filter(store=obj), many=True).data
+
 
     
 
@@ -120,7 +182,7 @@ class ProductSerializer(serializers.ModelSerializer):
     price_after_offer = serializers.SerializerMethodField()
     class Meta:
         model = Product
-        exclude = ['store','hours_Service']
+        exclude = ['store',]
     def get_price_after_offer(self, obj):
             if obj.offers is not None:
                 return obj.price_after_offer
@@ -253,4 +315,4 @@ class StoreFollowingSerializer(serializers.ModelSerializer):
 class CouponSerializer(serializers.ModelSerializer):
     class Meta:
         model=Coupon
-        fields='__all__'
+        exclude=['provider']

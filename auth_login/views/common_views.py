@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.views import APIView
 
-class ForgetPasswordAPIView(APIView):
+class ForgetPasswordRequestAPIView(APIView):
     permission_classes=[]
     authentication_classes=[]
     def post(self,request,*args, **kwargs):
@@ -17,12 +17,10 @@ class ForgetPasswordAPIView(APIView):
             return Response({"error":"the account not found"},status=status.HTTP_404_NOT_FOUND)
         if OTPRequest.checkRateLimitReached(phone=phone):
             return Response({'error': 'MANY_OTP_REQUESTS'}, status=status.HTTP_409_CONFLICT)
-        otp=OTPRequest.objects.create(phone=phone,type=OTPRequest.Types.FORGET_PASSWORD)
-        
-            
+        otp=OTPRequest.objects.create(phone=phone,type=OTPRequest.Types.FORGET_PASSWORD)  
         sms = SmsSender()
         if sms.send_otp(phone.replace('0', '966', 1), f"Your OTP for Update Your Password is: {otp}"):
-                return Response("created", status=status.HTTP_201_CREATED)
+                return Response({'result': 'Wait to recive OTP message'}, status=status.HTTP_201_CREATED)
         else:
                 return Response({'error': 'Failed to send OTP", "SMS_SEND_FAILED'}, status=status.HTTP_502_BAD_GATEWAY)
         
