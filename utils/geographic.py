@@ -20,3 +20,11 @@ def get_nearest_store(customer_latitude, customer_longitude,store_ids):
     # return the stors and their distance
     ordered_stors = [{'store':NearbyFeaturedStoreOrderSerializer(store).data,'distance':distance} for store, distance in store_with_distance]
     return ordered_stors
+
+def distance(customer_latitude, customer_longitude,provider_latitude, provider_longitude,):
+    if provider_latitude and provider_longitude and customer_latitude and customer_longitude:
+            provider_location = (provider_latitude, provider_longitude)
+            customer_location = (customer_latitude, customer_longitude)
+            distance = geodesic(provider_location, customer_location).kilometers
+            return distance
+            

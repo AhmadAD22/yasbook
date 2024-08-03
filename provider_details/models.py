@@ -4,8 +4,8 @@ from categroy.models import MainService
 import os
 from django.core.validators import MinValueValidator, MaxValueValidator
 from decimal import Decimal
-
-
+from datetime import datetime
+import pytz
 class Store(models.Model):
     provider = models.OneToOneField(Provider, on_delete=models.CASCADE)
     image = models.ImageField(upload_to='media/provider/store/',null=True,blank=True, verbose_name='رفع الصورة')
@@ -176,5 +176,8 @@ class Coupon(models.Model):
         return self.code
     
     def is_expired(self):
-        return self.expired < datetime.now()
+        # Convert both self.expired and datetime.now(utc) to offset-aware datetimes
+        expired_aware = self.expired.replace(tzinfo=pytz.utc)
+        now_aware = datetime.now(pytz.utc)
+        return expired_aware < now_aware
     

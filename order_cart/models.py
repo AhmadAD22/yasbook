@@ -4,8 +4,10 @@ from auth_login.models import *
 import decimal
 from decimal import Decimal, ROUND_HALF_UP
 from decimal import Decimal, InvalidOperation
+from utils.qr_code import *
 
 class Status(models.TextChoices):
+    UNCHECKED = 'UNCHECKED','Unchecked'
     PENDING = 'PENDING','Pending'
     IN_PROGRESS = 'IN_PROGRESS','In Progress'
     COMPLETED = 'COMPLETED','Completed'
@@ -70,29 +72,34 @@ class ProductOrder(models.Model):
     def __str__(self):   
         return self.product.name
     
+
+
 class ServiceOrder(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
     service = models.ForeignKey(Service, on_delete=models.CASCADE)
-    specialist = models.ForeignKey(StoreSpecialist, on_delete=models.CASCADE,null=True)
-    time_start=models.TimeField(verbose_name='وقت البدء' ,null=True)
-    date = models.DateTimeField( verbose_name='تاريخ الحجز',blank=True,null=True)
-    duration= models.PositiveIntegerField(verbose_name='مدة الخدمة (بالدقائق)', blank=True, null=True)
+    specialist = models.ForeignKey(StoreSpecialist, on_delete=models.CASCADE, null=True)
+    time_start = models.TimeField(verbose_name='وقت البدء', null=True)
+    date = models.DateTimeField(verbose_name='تاريخ الحجز', blank=True, null=True)
+    duration = models.PositiveIntegerField(verbose_name='مدة الخدمة (بالدقائق)', blank=True, null=True)
     status = models.CharField(max_length=20, choices=Status.choices)
     collected = models.BooleanField(default=False, verbose_name='تم تحصيلها', null=True, blank=True)
-    coupon=models.ForeignKey(Coupon, on_delete=models.SET_NULL,null=True,blank=True)
+    coupon = models.ForeignKey(Coupon, on_delete=models.SET_NULL, null=True, blank=True)
+    qr_code = models.ImageField(upload_to="media/order/qr_code", null=True, blank=True)
+
     @property
     def price(self):
-            return decimal.Decimal(self.service.price_after_offer)
+        return decimal.Decimal(self.service.price_after_offer)
 
     def price_with_coupon(self):
-            price = self.price
-            price=Decimal(price)
-            if self.coupon:
-                coupon_percent = Decimal(self.coupon.value) / 100
-                price = price - (price * coupon_percent)
-                return price
+        price = self.price
+        price = Decimal(price)
+        if self.coupon:
+            coupon_percent = Decimal(self.coupon.value) / 100
+            price = price - (price * coupon_percent)
             return price
-        
+        return price
+
+    
         
     
     

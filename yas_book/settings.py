@@ -196,3 +196,5 @@ EMAIL_HOST_USER = 'yasafco@gmail.com'
 EMAIL_HOST_PASSWORD = 'mcxx ysvt rktx rpxn'
 EMAIL_USE_TLS = True
 AUTH_PASSWORD_VALIDATORS = []
+
+SITE_URL='http://127.0.0.1:8000/'

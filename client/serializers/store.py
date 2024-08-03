@@ -8,6 +8,8 @@ from order_cart.models import *
 from django.db.models import Q,Sum
 
 
+
+
 class ServiceSerializer(serializers.ModelSerializer):
     specialists = serializers.SerializerMethodField()
     price_after_offer = serializers.SerializerMethodField()
@@ -97,7 +99,11 @@ class ReviewsSerializer(serializers.ModelSerializer):
         class Meta:
             model = Reviews
             exclude = ['customer']
-
+class CommonQuestionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CommonQuestion
+        fields = ['id','question', 'answer',]
+        read_only_fields = ['id',]
     
 
 class StoreADetailSerializer(serializers.ModelSerializer):
@@ -109,9 +115,12 @@ class StoreADetailSerializer(serializers.ModelSerializer):
     reviews = serializers.SerializerMethodField()
     address=serializers.CharField(source='provider.address', read_only=True)
     phone=serializers.CharField(source='provider.phone', read_only=True)
+    common_question = serializers.SerializerMethodField()
     
 
-
+    def get_common_question(self, obj):
+        # Customize the serialization of 'common_question' field here
+        return CommonQuestionSerializer(CommonQuestion.objects.filter(store=obj), many=True).data
     def get_specialists(self, obj):
         # Customize the serialization of 'specialists' field here
         return StoreASpecialistSerializer(obj.storespecialist_set.all(), many=True).data
@@ -123,7 +132,7 @@ class StoreADetailSerializer(serializers.ModelSerializer):
     def get_main_services(self, obj):
         main_services=StoreAdminServices.objects.filter(store=obj)
         
-        return [ main_service.main_service.name  for main_service in main_services ]
+        return [ {'id':main_service.main_service.id,'name':main_service.main_service.name}  for main_service in main_services ]
 
     def get_services(self, obj):
         # Customize the serialization of 'services' field here
@@ -141,4 +150,4 @@ class StoreADetailSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Store
-        fields = ['id','image','name','address','phone','about','created_at','openings', 'main_services', 'products', 'services', 'specialists','reviews']
+        fields = ['id','image','name','address','phone','about','created_at','openings', 'main_services', 'products', 'services', 'specialists','reviews','common_question']

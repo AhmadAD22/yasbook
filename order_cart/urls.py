@@ -2,10 +2,25 @@ from django.urls import path
 from .views import *
  
 urlpatterns = [
-    path('customer-book-product/', ProductOrderCreateView.as_view(), name='product-order-create'),
-    path('customer-get-book-product/', ProductOrderListView.as_view(), name='product-order-create'),
+    
+    #Customer Services
     path('customer-book-service/', ServiceOrderCreateView.as_view(), name='service-order-create'),
+    path('service-order-details/<int:pk>/', ServiceOrderDetails.as_view(), name='service-order-details'),
+    path('service-orders/<int:pk>/checkout/', ServiceOrderCheckoutView.as_view(), name='service-order-checkout'),
     path('customer-get-book-service/', ServiceOrderListView.as_view(), name='service-order-create'),
+    path('cancel-service/<int:pk>/', CustomertServiceCancelOrder.as_view(), name='customer-cancel-service'),
+    path('customer-book-product/', ProductOrderCreateView.as_view(), name='product-order-create'),
+    path('customer-current-service/', CurrentOrderCustomerListView.as_view(), name='customer-current-service'),
+    path('customer-previous-service/', PreviousOrderCustomerListView.as_view(), name='customer-previous-service'),
+    path('follow-service-order/<int:pk>/', ServiceOrderFollow.as_view(), name='follow-service-order'),
+    
+    
+    #Customer Products
+    path('customer-book-product/', ProductOrderCreateView.as_view(), name='product-order-create'),
+    path('complate-service/<int:pk>/', CustomertServiceComplateOrder.as_view(), name='customer-cancel-service'),
+    path('follow-product-order/<int:pk>/', ProductOrderFollow.as_view(), name='follow-product-order'),
+    
+    
 
     ## provider
 
@@ -24,11 +39,9 @@ urlpatterns = [
     path('cart/item/<int:item_id>/', CartItemAPIView.as_view(), name='cart-item-delete-api'),
     path('cart/service/', ServiceCartItemAPIView.as_view(), name='service-cart-item-api'),
     path('cart/service/<int:item_id>/', ServiceCartItemAPIView.as_view(), name='service-cart-item-delete-api'),
-    path('cart/checkout/', CartCheckoutAPIView.as_view(), name='cart-checkout'),
+    # path('cart/checkout/', CartCheckoutAPIView.as_view(), name='cart-checkout'),
     path('cart/', CartAPIView.as_view(), name='cart'),
  ########Specialist-availability
     path('specialist-availability/<int:service_id>', SpecialistAvailabilityView.as_view(), name='specialist-availability'),
  
-
-
 ]

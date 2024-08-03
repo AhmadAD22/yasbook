@@ -34,4 +34,5 @@ urlpatterns = [
     #Common
     path('forget-password-request',ForgetPasswordRequestAPIView.as_view()),
     path('forget-pssword-verify-phone',VerifyPhoneAPIView.as_view()),
+    
 ]   

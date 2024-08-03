@@ -2,12 +2,9 @@ from ..serializers.store import *
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from provider_details.models import Store
+from provider_details.models import Store,Reviews
 
 class StoreDetailView(APIView):
-    """
-    Retrieve a store instance.
-    """
     def get(self, request, pk):
         try:
             store = Store.objects.get(pk=pk)
@@ -17,5 +14,3 @@ class StoreDetailView(APIView):
         serializer = StoreADetailSerializer(store)
         return Response(serializer.data)
 
-    # You can also add other HTTP methods like post, put, delete, etc.
-    # as needed for your use case.

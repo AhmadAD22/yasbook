@@ -3,6 +3,47 @@ from .models import *
 from auth_login.serializers import CustomerSerializer
 from provider_details.models import *
 
+
+class ServiceOrderSerializer(serializers.ModelSerializer):
+    price = serializers.SerializerMethodField()
+    price_with_coupon = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ServiceOrder
+        fields = ('id', 'service', 'specialist', 'time_start', 'date','coupon', 'price', 'price_with_coupon')
+        read_only_fields = ('price', 'price_with_coupon')
+
+    def get_price(self, obj):
+        return str(obj.price)
+
+    def get_price_with_coupon(self, obj):
+        return str(obj.price_with_coupon())
+    
+
+
+class ProductOrderSerializer(serializers.ModelSerializer):
+    price = serializers.SerializerMethodField()
+    price_with_coupon = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ProductOrder
+        fields = (
+            'id',
+            'product',
+            'quantity',
+            'date',
+            'coupon',
+            'price',
+            'price_with_coupon',
+        )
+        read_only_fields = ('price', 'price_with_coupon')
+
+    def get_price(self, obj):
+        return str(obj.total_price())
+
+    def get_price_with_coupon(self, obj):
+        return str(obj.price_with_coupon())
+
 class ServiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Service
@@ -19,22 +60,9 @@ class ProductSerializer(serializers.ModelSerializer):
                 return obj.price_after_offer
             return obj.price
         
-class ServiceOrderSerializer(serializers.ModelSerializer):
-    service = ServiceSerializer(read_only=True)
-    customer=CustomerSerializer()
-    class Meta:
-        model = ServiceOrder
-        fields =['id','customer','service',]
-        read_only_fields = ['customer','accept']
+
         
-class ProductOrderSerializer(serializers.ModelSerializer):
-    product= ProductSerializer(read_only=True)
-    customer=CustomerSerializer()    
-    class Meta:
-        model = ProductOrder
-        fields =['id','customer','product','quantity',]
-        
-        read_only_fields = ['customer','accept']
+
 
 
 
@@ -62,17 +90,15 @@ class ProductOrderBookSerializer(serializers.ModelSerializer):
         else:
             return obj.quantity * obj.product.price
         
-
-class ServiceBookOrderSerializer(serializers.ModelSerializer):
-    customer=CustomerSerializer()
+        
+class UncheckedServiceOrderSerializer(serializers.ModelSerializer):
     specialist=serializers.CharField(source='specialist.name', read_only=True)
     service_name=serializers.CharField(source='service.name', read_only=True)
     price=serializers.CharField(source='service.price', read_only=True)
     price_after_offer=serializers.CharField(source='service.price_after_offer', read_only=True)
     offer=serializers.CharField(source='service.offers', read_only=True)
-    coupon=serializers.CharField(source='coupon.name', read_only=True)
+    coupon=serializers.CharField(source='coupon.value', read_only=True)
     main_service=serializers.CharField(source='service.main_service', read_only=True)
-    category=serializers.CharField(source='service.main_service.category', read_only=True)
     store_name = serializers.SerializerMethodField()
     store_image = serializers.SerializerMethodField()
    
@@ -84,7 +110,68 @@ class ServiceBookOrderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ServiceOrder
-        fields = ('customer', 'main_service','service_name','price','offer','price_after_offer','coupon','price_with_coupon','service', 'category','specialist', 'time_start', 'date', 'duration', 'status', 'store_name', 'store_image')
+        fields = ('id','main_service','service_name','price','offer','price_after_offer','coupon','price_with_coupon','specialist', 'time_start', 'date', 'duration', 'status', 'store_name', 'store_image','status')
+
+        
+
+class ServiceBookOrderSerializer(serializers.ModelSerializer):
+    specialist=serializers.CharField(source='specialist.name', read_only=True)
+    service_name=serializers.CharField(source='service.name', read_only=True)
+    price=serializers.CharField(source='service.price', read_only=True)
+    price_after_offer=serializers.CharField(source='service.price_after_offer', read_only=True)
+    offer=serializers.CharField(source='service.offers', read_only=True)
+    coupon=serializers.CharField(source='coupon.value', read_only=True)
+    main_service=serializers.CharField(source='service.main_service', read_only=True)
+    store_name = serializers.SerializerMethodField()
+    store_image = serializers.SerializerMethodField()
+   
+    def get_store_name(self, obj):
+        return obj.service.store.name if obj.service.store else None
+
+    def get_store_image(self, obj):
+        return obj.service.store.image.url if obj.service.store and obj.service.store.image else None
+
+    class Meta:
+        model = ServiceOrder
+        fields = ('id','main_service','service_name','price','offer','price_after_offer','coupon','price_with_coupon','specialist', 'time_start', 'date', 'duration', 'status', 'store_name', 'store_image','qr_code')
+        
+class CustomerServiceOrderListSerializer(serializers.ModelSerializer):
+    store_latitude=serializers.CharField(source='service.store.provider.latitude', read_only=True)
+    store_longitude=serializers.CharField(source='service.store.provider.longitude', read_only=True)
+    store_address=serializers.CharField(source='service.store.provider.address', read_only=True)
+    store_name=serializers.CharField(source='service.store.name', read_only=True)
+    service_name=serializers.CharField(source='service.name', read_only=True)
+    service_image=serializers.CharField(source='service.image', read_only=True)
+    reviews=serializers.SerializerMethodField()
+    def get_reviews(self, obj):
+        reviews_data = obj.service.store.reviews_set.all()
+        ratings = [review.rating for review in reviews_data]
+        average = sum(ratings) / len(ratings) if ratings else 0
+        return {"count":len(reviews_data),'average':average}
+    class Meta:
+        model = ServiceOrder
+        fields = ['id','price_with_coupon','store_address','store_longitude','store_latitude','service_name','service_image','store_name','status','reviews']
+        
+
+        
+
+class CustomerProductOrderListSerializer(serializers.ModelSerializer):
+    store_latitude=serializers.CharField(source='product.store.provider.latitude', read_only=True)
+    store_longitude=serializers.CharField(source='product.store.provider.longitude', read_only=True)
+    store_address=serializers.CharField(source='product.store.provider.address', read_only=True)
+    store_name=serializers.CharField(source='product.store.name', read_only=True)
+    product_name=serializers.CharField(source='product.name', read_only=True)
+    product_image=serializers.CharField(source='product.image', read_only=True)
+    reviews=serializers.SerializerMethodField()
+    def get_reviews(self, obj):
+        reviews_data = obj.product.store.reviews_set.all()
+        ratings = [review.rating for review in reviews_data]
+        average = sum(ratings) / len(ratings) if ratings else 0
+        return {"count":len(reviews_data),'average':average}
+    class Meta:
+        model = ProductOrder
+        fields = ['id','price_with_coupon','store_address','store_longitude','store_latitude','product_name','product_image','store_name','status','reviews']
+
 
 ###############PROVIDER##################################
 class ServiceOrderProviderSerializer(serializers.ModelSerializer):
@@ -93,7 +180,7 @@ class ServiceOrderProviderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ServiceOrder
-        fields = ['id','time_start', 'date','service_name','customer']
+        fields = ['id','time_start', 'price_with_coupon','service_name','customer']
         read_only_fields = ['customer',]
 
 
@@ -122,9 +209,7 @@ class ProductOrderProviderAcceptSerializer(serializers.ModelSerializer):
         fields = ['accept','customer','product','quantity']
   
         
-class ServiceAndProductOrderProviderSerializer(serializers.Serializer):
-    product = ProductOrderSerializer(many=True)
-    service = ServiceOrderSerializer(many=True)
+
 ##############END PROVIDER########
     
 ###########CART###########################    
@@ -172,9 +257,36 @@ class CartSerializer(serializers.ModelSerializer):
         
 #########END CART###############################################
 
+
+
+
 #############StoreSpecialistBook##############
 class StoreSpecialistBookSerializer(serializers.ModelSerializer):
     class Meta:
         model = StoreSpecialist
         fields = ['id', 'name','image']
         
+###########Reports Serializers
+
+class ServiceReportSerializer(serializers.ModelSerializer):
+    customer=CustomerSerializer()
+    specialist=serializers.CharField(source='specialist.name', read_only=True)
+    service_name=serializers.CharField(source='service.name', read_only=True)
+    price=serializers.CharField(source='service.price', read_only=True)
+    price_after_offer=serializers.CharField(source='service.price_after_offer', read_only=True)
+    offer=serializers.CharField(source='service.offers', read_only=True)
+    coupon=serializers.CharField(source='coupon.name', read_only=True)
+    main_service=serializers.CharField(source='service.main_service', read_only=True)
+    category=serializers.CharField(source='service.main_service.category', read_only=True)
+    store_name = serializers.SerializerMethodField()
+    store_image = serializers.SerializerMethodField()
+   
+    def get_store_name(self, obj):
+        return obj.service.store.name if obj.service.store else None
+
+    def get_store_image(self, obj):
+        return obj.service.store.image.url if obj.service.store and obj.service.store.image else None
+
+    class Meta:
+        model = ServiceOrder
+        fields = ('customer', 'main_service','service_name','price','offer','price_after_offer','coupon','price_with_coupon','service', 'category','specialist', 'time_start', 'date', 'duration', 'status', 'store_name', 'store_image')

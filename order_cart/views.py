@@ -9,13 +9,23 @@ from utils.error_handle import error_handler
 from notification.models import Notification
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
+from utils.qr_code import generate_qr_code
 from provider_details.models import *
 from django.db.models import Sum
-from django.db.models import Sum, F, DecimalField
+from django.db.models import Sum
 from decimal import Decimal
 from rest_framework.exceptions import NotFound
 from django.db.models import Q
 
+######Product Order Views
+class ProductOrderFollow(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    def get(self, request, pk):
+        try:
+            product_order = ProductOrder.objects.get(pk=pk)
+        except ProductOrder.DoesNotExist:
+            return Response({'error': 'Product order not found.'}, status=status.HTTP_404_NOT_FOUND)
+        return Response ({'id':product_order.id,'status':product_order.status})
 
 class ProductOrderCreateView(generics.CreateAPIView):
     serializer_class = ProductOrderBookSerializer
@@ -37,15 +47,77 @@ class ProductOrderListView(generics.ListAPIView):
         
         return ProductOrder.objects.filter(customer=customer)
     
-
-class ServiceOrderCreateView(generics.CreateAPIView):
-    serializer_class = ServiceBookOrderSerializer
+class ProductOrderCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
-    def perform_create(self, serializer):
-        customer=Customer.objects.get(phone=self.request.user.phone)
 
-        serializer.save(customer=customer)
+    def post(self, request, *args, **kwargs):
+        serializer = ProductOrderSerializer(data=request.data)
+        if serializer.is_valid():
+            customer = Customer.objects.get(phone=request.user.phone)
+            product=Product.objects.get(id=request.data['product'])
+            product.quantity-=request.data['quantity']
+            product.save()
+            serializer.save(customer=customer,status=Status.UNCHECKED)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(error_handler(serializer.errors), status=status.HTTP_400_BAD_REQUEST)
+    
+######Service Order Views
+class ServiceOrderCreateView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
 
+    def post(self, request, *args, **kwargs):
+        serializer = ServiceOrderSerializer(data=request.data)
+        if serializer.is_valid():
+            customer = Customer.objects.get(phone=request.user.phone)
+            service=Service.objects.get(id=request.data['service'])
+            serializer.save(customer=customer,status=Status.UNCHECKED,duration=service.duration)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(error_handler(serializer.errors), status=status.HTTP_400_BAD_REQUEST)
+    
+
+class ServiceOrderCheckoutView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            service_order = ServiceOrder.objects.get(pk=pk)
+        except ServiceOrder.DoesNotExist:
+            return Response({'error': 'Service order not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        service_order.status = Status.PENDING
+        service_order.qr_code = generate_qr_code("test", service_order.id)
+        service_order.save()
+
+        serializer = ServiceBookOrderSerializer(service_order)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+class ServiceOrderDetails(APIView):
+    def post(self, request, pk):
+        try:
+            service_order = ServiceOrder.objects.get(pk=pk)
+        except ServiceOrder.DoesNotExist:
+            return Response({'error': 'Service order not found.'}, status=status.HTTP_404_NOT_FOUND)
+        coupon_code=request.data['coupon_code']
+        try:
+            coupon=Coupon.objects.get(code=coupon_code)
+            if coupon.is_expired():
+                 return Response({'error': 'Coupon  is expired.'}, status=status.HTTP_303_SEE_OTHER)
+            
+        except Coupon.DoesNotExist:
+            return Response({'error': 'Coupon  not found.'}, status=status.HTTP_404_NOT_FOUND)
+        if service_order.coupon:
+            return Response({'error': 'There is coupon already.'}, status=status.HTTP_303_SEE_OTHER)
+        service_order.coupon=coupon
+        service_order.save()
+        return Response({'coupon_value':coupon.value},status=status.HTTP_200_OK)
+    def get(self, request, pk):
+        try:
+            service_order = ServiceOrder.objects.get(pk=pk)
+        except ServiceOrder.DoesNotExist:
+            return Response({'error': 'Service order not found.'}, status=status.HTTP_404_NOT_FOUND)
+        serializer=UncheckedServiceOrderSerializer(service_order)
+        return Response(serializer.data,status=status.HTTP_200_OK)
+        
 class ServiceOrderListView(generics.ListAPIView):
     serializer_class = ServiceBookOrderSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -53,7 +125,84 @@ class ServiceOrderListView(generics.ListAPIView):
         customer=Customer.objects.get(phone=self.request.user.phone)
         return ServiceOrder.objects.filter(customer=customer)
     
+class CustomertServiceCancelOrder(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    def post(self, request, pk):
+        try:
+            service_order = ServiceOrder.objects.get(pk=pk)
+        except ServiceOrder.DoesNotExist:
+            return Response({'error': 'Service order not found.'}, status=status.HTTP_404_NOT_FOUND)
+        service_order.status=Status.CANCELLED
+        service_order.save()
+        return Response({"result":"The order Canceled"},status=status.HTTP_200_OK)
+    
+class CustomertServiceComplateOrder(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    def post(self, request, pk):
+        try:
+            service_order = ServiceOrder.objects.get(pk=pk)
+        except ServiceOrder.DoesNotExist:
+            return Response({'error': 'Service order not found.'}, status=status.HTTP_404_NOT_FOUND)
+        service_order.status=Status.COMPLETED
+        service_order.save()
+        return Response({"result":"The order Canceled"},status=status.HTTP_200_OK)
+    
+class ServiceOrderFollow(APIView):
+    def get(self, request, pk):
+        try:
+            service_order = ServiceOrder.objects.get(pk=pk)
+        except ServiceOrder.DoesNotExist:
+            return Response({'error': 'Service order not found.'}, status=status.HTTP_404_NOT_FOUND)
+        return Response ({'id':service_order.id,'status':service_order.status})
 
+    
+class CurrentOrderCustomerListView(APIView):
+    # serializer_class = ServiceOrderProviderSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, format=None):
+        customer = Customer.objects.get(phone=request.user.phone)
+        service_orders = ServiceOrder.objects.filter(
+            Q(customer=customer) &
+            (Q(status=Status.PENDING) | Q(status=Status.IN_PROGRESS)))
+        
+        product_orders = ProductOrder.objects.filter(
+            Q(customer=customer) &
+            (Q(status=Status.PENDING) | Q(status=Status.IN_PROGRESS)))
+
+        service_srializer = CustomerServiceOrderListSerializer(service_orders, many=True)
+        product_srializer = CustomerProductOrderListSerializer(product_orders, many=True)
+        
+        data = {
+            'service_orders':service_srializer.data,
+            'product_orders':product_srializer.data
+        }
+        return Response(data, status=status.HTTP_200_OK)
+    
+class PreviousOrderCustomerListView(APIView):
+    # serializer_class = ServiceOrderProviderSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, format=None):
+        customer = Customer.objects.get(phone=request.user.phone)
+        service_orders = ServiceOrder.objects.filter(
+            Q(customer=customer) &
+            (Q(status=Status.CANCELLED) | Q(status=Status.COMPLETED) | Q(status=Status.REJECTED))
+        )
+        product_orders = ProductOrder.objects.filter(
+            Q(customer=customer) &
+            (Q(status=Status.CANCELLED) | Q(status=Status.COMPLETED) | Q(status=Status.REJECTED))
+        )
+        
+        
+        service_srializer = CustomerServiceOrderListSerializer(service_orders, many=True)
+        product_srializer = CustomerProductOrderListSerializer(product_orders, many=True)
+        
+        data = {
+            'service_orders':service_srializer.data,
+            'product_orders':product_srializer.data
+        }
+        return Response(data, status=status.HTTP_200_OK)
 
 ### provider
 
@@ -495,7 +644,7 @@ class SpecialistAvailabilityView(APIView):
         orders = ServiceOrder.objects.filter(
             specialist=specialist,
             date__date=parsed_date,
-            accept=True
+            status=Status.IN_PROGRESS
         )
         hours_range = []
         current_time = storeopening.time_start
@@ -515,3 +664,9 @@ class SpecialistAvailabilityView(APIView):
     
 
     
+###########REPORTs
+class ServiceReport(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    def get(self,request):
+        provider = Provider.objects.get(phone=request.user.phone)
+        service_orders = ServiceOrder.objects.filter(Q(service__store__provider=provider) )

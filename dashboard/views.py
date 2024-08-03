@@ -84,8 +84,8 @@ def subscription_details(request,id):
     products=Product.objects.filter(store=store)
     services=Service.objects.filter(store=store)
     # Get accepted Product and Service orders that related with Store
-    productorders = ProductOrder.objects.filter(product__in=products,accept=True,collected=False)
-    servicesorders = ServiceOrder.objects.filter(service__in=services,accept=True,collected=False)
+    productorders = ProductOrder.objects.filter(product__in=products,status=Status.COMPLETED,collected=False)
+    servicesorders = ServiceOrder.objects.filter(service__in=services,status=Status.COMPLETED,collected=False)
     #Calclate the count and price for orders that related with Store
     productorders_statistics=get_product_statistics(productorders,providersubscription)
     servicesorders_statistics=get_services_statistics(servicesorders,providersubscription)
