@@ -1,5 +1,7 @@
 from rest_framework import serializers
-from provider_details.models import Service,Store,Reviews
+from provider_details.models import Service,Store
+from ..models import *
+from auth_login.models import Customer
 
 
 class StoreForServiceListSerializer(serializers.ModelSerializer):
@@ -12,6 +14,7 @@ class StoreForServiceListSerializer(serializers.ModelSerializer):
         ratings = [review.rating for review in reviews_data]
         average = sum(ratings) / len(ratings) if ratings else 0
         return {"count":len(reviews_data),'average':average}
+    
     class Meta:
         model=Store
         fields=['id','name','latitude','longitude','address','reviews']
@@ -20,10 +23,19 @@ class ServiceListSerializer(serializers.ModelSerializer):
     price_after_offer = serializers.SerializerMethodField()
     store=StoreForServiceListSerializer(read_only=True)
     main_service=serializers.CharField(source='main_service.name')
+    favorate=serializers.SerializerMethodField()
+    def get_favorate(self, obj):
+        user = self.context['request'].user
+        
+        try:
+            favorate_service = FavorateService.objects.get(service=obj, customer__phone=user.phone)
+            return True
+        except FavorateService.DoesNotExist:
+            return False
     
     class Meta:
         model = Service
-        fields = ['id','image','name','price','price_after_offer','main_service','store']
+        fields = ['id','image','name','price','price_after_offer','main_service','store','favorate']
         
     def get_price_after_offer(self, obj):
             if obj.offers is not None:

@@ -125,6 +125,8 @@ class Service(models.Model):
                 os.remove(self.image.path)
         
         super(Service, self).delete(*args, **kwargs)
+    def __str__(self) -> str:
+        return self.name
 
 class Product(models.Model):
     store = models.ForeignKey(Store, on_delete=models.CASCADE)

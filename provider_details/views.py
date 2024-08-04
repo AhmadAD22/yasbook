@@ -15,6 +15,9 @@ from utils.error_handle import error_handler
 from datetime import datetime
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from auth_login.serializers import PromotionSubscriptionSerializer
+from client.serializers.service import ServiceListSerializer
+from django.utils import timezone
 
 class ServiceOrderReportAPIView(APIView):
     def get(self, request):
@@ -547,53 +550,41 @@ class FeaturedStoreNearbyStoreOrderAndStoryView(APIView):
             if(not subscription.is_duration_finished()):
                 provider_subscripted_ids.append(subscription.provider.id)
         subscripted_stores=Store.objects.filter(provider__id__in=provider_subscripted_ids).values_list('id', flat=True)
-        main_service_id = self.kwargs['main_service_id']
-        ####featured stores by number of followes######
-        #list stores ids that have the main_service_id
-        stores_have_selected_main_service_ides = StoreAdminServices.objects.filter(main_service=main_service_id).values_list('store_id', flat=True)
-        # Convert the QuerySet to a set for intersection
-        stores_have_selected_main_service_ides = set(stores_have_selected_main_service_ides)
-        subscripted_stores=set(subscripted_stores)
-        # Perform the intersection that ensures that Fetch subscripted stores that have the indicated main_service
-        filtered_stores = subscripted_stores.intersection(stores_have_selected_main_service_ides)
-        #Get ordered featured stores by number of followes
-        featuredstores=Store.objects.filter(id__in=filtered_stores).annotate(num_followers=models.Count('followingstore')).order_by('-num_followers')
-        featuredstoresserializer=NearbyFeaturedStoreOrderSerializer(featuredstores,many=True)
+        promotion=PromotionSubscription.objects.all()
+        promotion_serializer=PromotionSubscriptionSerializer(many=True)
+        # Get the most ordered services for the customer
+        most_ordered_services = ServiceOrder.objects\
+                                  .values('service')\
+                                  .annotate(order_count=Count('service'))\
+                                  .order_by('-order_count')[:10]
+        most_ordered_products =ProductOrder.objects.values('product').annotate(order_count=Count('id')).order_by('-order_count')[:5]
+        product_ids = [product['product'] for product in most_ordered_products]
+        products = Product.objects.filter(id__in=product_ids) 
+        products_serializer = ProductASerializer(products, many=True,context={'request': request})          
+
+        # Serialize the service data
+        service_ids = [service['service'] for service in most_ordered_services]
+        services = Service.objects.filter(id__in=service_ids)
+        service_serializer = ServiceListSerializer(services, many=True,context={'request': request})
         ####nearest_stores######
         #Get nearest_stores by customer location and stores ids that have the main_service_id
         customer=Customer.objects.get(phone=self.request.user.phone)
         try:
         #Get customer for nearby stores
-            nearbystores=get_nearest_store(customer_latitude=customer.latitude,customer_longitude=customer.longitude,store_ids=filtered_stores)
+            nearbystores=get_nearest_store(customer_latitude=customer.latitude,customer_longitude=customer.longitude,store_ids=subscripted_stores)
         except:
             return Response({'error': 'Yor location undefined'}, status=status.HTTP_400_BAD_REQUEST)
-        #Get Most ordred for main_srvice
-        main_srvice=MainService.objects.filter(id=self.kwargs['main_service_id']).first()
-        main_service_counts = MainService.objects.filter(category=main_srvice.category).annotate(count=Count('service__serviceorder__customer', distinct=True)).order_by('-count')
-        main_service_data = [
-            {  
-                'id': main_service.id,
-                'name': main_service.name,
-                'count': main_service.count,
-                'image': main_service.image.url if main_service.image else None,
-            }
-            for main_service in main_service_counts
-                            ]
-        #Get latest images belonging to stores that the customer follow it
-        following_stores = FollowingStore.objects.filter(customer=customer)
+        
 
-        latest_images = []
-        for following_store in following_stores:
-            store = following_store.store
-            try:
-                latest_image = StoreGallery.objects.filter(store=store).latest('created_at')
-                latest_image_serializer=StoreGallerySerializer(latest_image)
-                latest_images.append({'store_id': store.id, 'store_name': store.name, 'latest_image': latest_image_serializer.data})
-            except StoreGallery.DoesNotExist:
-                # Skip adding store name and ID if StoreGallery.DoesNotExist exception is raised
-                continue
+        # Get the new services with offers that are not null
+        new_services_with_offers = Service.objects.filter(
+            created_at__gte=timezone.now() - timezone.timedelta(days=30),
+            offers__isnull=False
+        )
+        service_offer_serializer = ServiceListSerializer(services, many=True,context={'request': request})
 
-        return Response({'featured_stores':featuredstoresserializer.data, 'nearby_stores':nearbystores, 'most_search_interest':main_service_data, 'story':latest_images})
+
+        return Response({'promotion':promotion_serializer.data,'nearby_stores':nearbystores,'services':service_serializer.data,'products':products_serializer.data,'service_offer':service_offer_serializer.data})
     
 
 class NearbyStoreOrderByMainServiceView(APIView):

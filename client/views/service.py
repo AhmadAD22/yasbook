@@ -9,6 +9,7 @@ from ..serializers.service import *
 from utils.subscriptions import active_stores
 from utils.geographic import distance
 from auth_login.models import Customer
+from ..models import FavorateService
 
 class ServiceSearchAPIView(APIView):
     permission_classes=[IsAuthenticated]
@@ -18,7 +19,7 @@ class ServiceSearchAPIView(APIView):
         # Get the services from the stores with active subscriptions
         services = Service.objects.filter(store__in=stores)
         services = services.filter(name__icontains=query)
-        serializer = ServiceListSerializer(services, many=True)
+        serializer = ServiceListSerializer(services, many=True,context={'request': request})
         return Response(serializer.data)
 
 
@@ -44,7 +45,7 @@ class ServiceFilterAPIView(APIView):
         if rating is not None:
             services = services.annotate(store_avg_rating=Avg('store__reviews__rating')).filter(store_avg_rating__gte=rating)
 
-        serializer = ServiceListSerializer(services, many=True)
+        serializer = ServiceListSerializer(services, many=True,context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
     
 class ServicesByCategoryAPIView(APIView):
@@ -55,7 +56,7 @@ class ServicesByCategoryAPIView(APIView):
         # Get the services from the stores with active subscriptions
         services = Service.objects.filter(store__in=stores)
         services = services.filter(main_service__category__id=category_id)
-        serializer = ServiceListSerializer(services, many=True)
+        serializer = ServiceListSerializer(services, many=True,context={'request': request})
         return Response(serializer.data)
     
 class ServicesByCategoryAndMAinServiceAPIView(APIView):
@@ -67,7 +68,7 @@ class ServicesByCategoryAndMAinServiceAPIView(APIView):
         services = Service.objects.filter(store__in=stores)
         services = services.filter(main_service__category__id=category_id)
         services = services.filter(main_service__id=main_service_id)
-        serializer = ServiceListSerializer(services, many=True)
+        serializer = ServiceListSerializer(services, many=True,context={'request': request})
         return Response(serializer.data)
     
 class ServiceDetailsAPIView(APIView):
@@ -88,3 +89,36 @@ class ServiceDetailsAPIView(APIView):
         data['store_distance'] = store_distance
 
         return Response(data)
+    
+class AddServiceToFavorate(APIView):
+     def post(self,request):
+         try:
+            service=Service.objects.get(id=request.data['service_id'])
+         except Service.DoesNotExist:
+             return Response({"error": "service does not found!"}, status=status.HTTP_404_NOT_FOUND)
+         customer=Customer.objects.get(phone=request.user.phone)
+         try:
+            favorate_service=FavorateService.objects.create(service=service,customer=customer)
+            favorate_service.save()
+         except :
+             return Response({"error": "service Already Added!"}, status=status.HTTP_409_CONFLICT)
+         return Response({"result":"Service Adedd to favorate"},status=status.HTTP_200_OK)
+     
+class DeleteServiceFromFavorate(APIView):
+     def post(self,request):
+         try:
+            service=Service.objects.get(id=request.data['service_id'])
+         except Service.DoesNotExist:
+             return Response({"error": "service does not found!"}, status=status.HTTP_404_NOT_FOUND)
+         customer=Customer.objects.get(phone=request.user.phone)
+         try:
+            favorate_service=FavorateService.objects.get(service=service,customer=customer)
+            favorate_service.delete()
+         except :
+             return Response({"error": "service Already Deleted!"}, status=status.HTTP_409_CONFLICT)
+         return Response({"result":"Service deleted from favorate"},status=status.HTTP_200_OK)
+     
+     
+
+             
+         

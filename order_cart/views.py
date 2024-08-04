@@ -27,15 +27,6 @@ class ProductOrderFollow(APIView):
             return Response({'error': 'Product order not found.'}, status=status.HTTP_404_NOT_FOUND)
         return Response ({'id':product_order.id,'status':product_order.status})
 
-class ProductOrderCreateView(generics.CreateAPIView):
-    serializer_class = ProductOrderBookSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    
-    def perform_create(self, serializer):
-        customer=Customer.objects.get(phone=self.request.user.phone)
-
-        serializer.save(customer=customer)
 
 
 class ProductOrderListView(generics.ListAPIView):
@@ -55,12 +46,81 @@ class ProductOrderCreateView(APIView):
         if serializer.is_valid():
             customer = Customer.objects.get(phone=request.user.phone)
             product=Product.objects.get(id=request.data['product'])
+            if product.quantity < request.data['quantity']:
+                return Response({'error': 'Quantity is not enough'}, status=status.HTTP_409_CONFLICT)
             product.quantity-=request.data['quantity']
             product.save()
-            serializer.save(customer=customer,status=Status.UNCHECKED)
+            serializer.save(customer=customer,status=Status.UNCHECKED,product=product)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(error_handler(serializer.errors), status=status.HTTP_400_BAD_REQUEST)
     
+class ProductOrderDetails(APIView):
+    def post(self, request, pk):
+        try:
+            product_order = ProductOrder.objects.get(pk=pk)
+        except ProductOrder.DoesNotExist:
+            return Response({'error': 'Product order not found.'}, status=status.HTTP_404_NOT_FOUND)
+        coupon_code=request.data['coupon_code']
+        try:
+            coupon=Coupon.objects.get(code=coupon_code)
+            if coupon.is_expired():
+                 return Response({'error': 'Coupon  is expired.'}, status=status.HTTP_303_SEE_OTHER)
+            
+        except Coupon.DoesNotExist:
+            return Response({'error': 'Coupon  not found.'}, status=status.HTTP_404_NOT_FOUND)
+        if product_order.coupon:
+            return Response({'error': 'There is coupon already.'}, status=status.HTTP_303_SEE_OTHER)
+        product_order.coupon=coupon
+        product_order.save()
+        return Response({'coupon_value':coupon.value},status=status.HTTP_200_OK)
+    
+    def get(self, request, pk):
+        try:
+            product_order = ProductOrder.objects.get(pk=pk)
+        except ProductOrder.DoesNotExist:
+            return Response({'error': 'Product order not found.'}, status=status.HTTP_404_NOT_FOUND)
+        serializer=ProductOrderSerializer(product_order)
+        return Response(serializer.data,status=status.HTTP_200_OK)
+        
+    
+class ProductOrderCheckoutView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            product_order = ProductOrder.objects.get(pk=pk)
+        except ProductOrder.DoesNotExist:
+            return Response({'error': 'Order order not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        product_order.status = Status.PENDING
+        product_order.qr_code = generate_qr_code("test", product_order.id)
+        product_order.save()
+
+        serializer = ProductOrderSerializer(product_order)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+class CustomertProductCancelOrder(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    def post(self, request, pk):
+        try:
+            product_order = ProductOrder.objects.get(pk=pk)
+        except ProductOrder.DoesNotExist:
+            return Response({'error': 'Product order not found.'}, status=status.HTTP_404_NOT_FOUND)
+        product_order.status=Status.CANCELLED
+        product_order.save()
+        return Response({"result":"The order Canceled"},status=status.HTTP_200_OK)
+    
+class CustomertProductComplateOrder(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    def post(self, request, pk):
+        try:
+            product_order = ProductOrder.objects.get(pk=pk)
+        except ProductOrder.DoesNotExist:
+            return Response({'error': 'Product order not found.'}, status=status.HTTP_404_NOT_FOUND)
+        product_order.status=Status.COMPLETED
+        product_order.save()
+        return Response({"result":"The order Complated"},status=status.HTTP_200_OK)
+
 ######Service Order Views
 class ServiceOrderCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -73,6 +133,8 @@ class ServiceOrderCreateView(APIView):
             serializer.save(customer=customer,status=Status.UNCHECKED,duration=service.duration)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(error_handler(serializer.errors), status=status.HTTP_400_BAD_REQUEST)
+
+
     
 
 class ServiceOrderCheckoutView(APIView):
@@ -145,7 +207,7 @@ class CustomertServiceComplateOrder(APIView):
             return Response({'error': 'Service order not found.'}, status=status.HTTP_404_NOT_FOUND)
         service_order.status=Status.COMPLETED
         service_order.save()
-        return Response({"result":"The order Canceled"},status=status.HTTP_200_OK)
+        return Response({"result":"The order Complated"},status=status.HTTP_200_OK)
     
 class ServiceOrderFollow(APIView):
     def get(self, request, pk):

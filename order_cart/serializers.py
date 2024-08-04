@@ -19,11 +19,23 @@ class ServiceOrderSerializer(serializers.ModelSerializer):
     def get_price_with_coupon(self, obj):
         return str(obj.price_with_coupon())
     
-
+class ProductSerializer(serializers.ModelSerializer):
+    price_after_offer = serializers.SerializerMethodField()
+    class Meta:
+        model = Product
+        fields = ['id','name','image','price','offers','price_after_offer']
+        
+    def get_price_after_offer(self, obj):
+            if obj.offers is not None:
+                return obj.price_after_offer
+            return obj.price
 
 class ProductOrderSerializer(serializers.ModelSerializer):
+    product=ProductSerializer(read_only=True)
     price = serializers.SerializerMethodField()
     price_with_coupon = serializers.SerializerMethodField()
+    store_name = serializers.SerializerMethodField()
+    coupon=serializers.CharField(source='coupon.name', read_only=True)
 
     class Meta:
         model = ProductOrder
@@ -35,8 +47,16 @@ class ProductOrderSerializer(serializers.ModelSerializer):
             'coupon',
             'price',
             'price_with_coupon',
+            'store_name',
+            'status',
         )
+        
         read_only_fields = ('price', 'price_with_coupon')
+    def get_store_name(self, obj):
+        return obj.product.store.name if obj.product.store else None
+
+    
+
 
     def get_price(self, obj):
         return str(obj.total_price())
@@ -49,16 +69,7 @@ class ServiceSerializer(serializers.ModelSerializer):
         model = Service
         fields = ['id','name','image']
         
-class ProductSerializer(serializers.ModelSerializer):
-    price_after_offer = serializers.SerializerMethodField()
-    class Meta:
-        model = Product
-        fields = ['id','name','image','price','offers','price_after_offer']
-        
-    def get_price_after_offer(self, obj):
-            if obj.offers is not None:
-                return obj.price_after_offer
-            return obj.price
+
         
 
         

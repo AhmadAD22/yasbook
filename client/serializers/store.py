@@ -6,6 +6,7 @@ from auth_login.serializers import CustomerSerializer
 from auth_login.models import ProviderSubscription
 from order_cart.models import *
 from django.db.models import Q,Sum
+from ..models import *
 
 
 
@@ -13,6 +14,15 @@ from django.db.models import Q,Sum
 class ServiceSerializer(serializers.ModelSerializer):
     specialists = serializers.SerializerMethodField()
     price_after_offer = serializers.SerializerMethodField()
+    favorate=serializers.SerializerMethodField()
+    def get_favorate(self, obj):
+        user = self.context['request'].user
+        
+        try:
+            favorate_service = FavorateService.objects.get(service=obj, customer__phone=user.phone)
+            return True
+        except FavorateService.DoesNotExist:
+            return False
     class Meta:
         model = Service
         exclude = ['store']
@@ -32,6 +42,16 @@ class ServiceSerializer(serializers.ModelSerializer):
     
 class ProductSerializer(serializers.ModelSerializer):
     price_after_offer = serializers.SerializerMethodField()
+    favorate=serializers.SerializerMethodField()
+    def get_favorate(self, obj):
+        user = self.context['request'].user
+        
+        try:
+            favorate_service = FavorateProduct.objects.get(product=obj, customer__phone=user.phone)
+            return True
+        except FavorateProduct.DoesNotExist:
+            return False
+    
     class Meta:
         model = Product
         exclude = ['store',]
