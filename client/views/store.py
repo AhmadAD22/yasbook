@@ -12,8 +12,6 @@ class StoreDetailView(APIView):
             return Response(status=status.HTTP_404_NOT_FOUND)
 
         serializer = StoreADetailSerializer(store,context={'request': request})
-        customer=Customer.objects.get(phone=request.user.phone)
-        customer_serializer=CustomerSerializer(customer)
         
-        return Response({'data':serializer.data,'customer':customer_serializer.data},status=status.HTTP_200_OK)
+        return Response(serializer.data,status=status.HTTP_200_OK)
 

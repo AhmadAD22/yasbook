@@ -582,9 +582,11 @@ class FeaturedStoreNearbyStoreOrderAndStoryView(APIView):
             offers__isnull=False
         )
         service_offer_serializer = ServiceListSerializer(services, many=True,context={'request': request})
+        customer=Customer.objects.get(phone=request.user.phone)
+        customer_serializer=CustomerSerializer(customer)
+        
 
-
-        return Response({'promotion':promotion_serializer.data,'nearby_stores':nearbystores,'services':service_serializer.data,'products':products_serializer.data,'service_offer':service_offer_serializer.data})
+        return Response({'promotion':promotion_serializer.data,'nearby_stores':nearbystores,'services':service_serializer.data,'products':products_serializer.data,'service_offer':service_offer_serializer.data,'customer':customer_serializer.data})
     
 
 class NearbyStoreOrderByMainServiceView(APIView):
