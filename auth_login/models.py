@@ -54,6 +54,7 @@ class MyUser(AbstractUser):
 
 
 class Customer(MyUser):
+    image = models.ImageField(upload_to='media/customers/',null=True,blank=True,)
     latitude = models.CharField(max_length=255, verbose_name='Latitude', null=True, blank=True)
     longitude = models.CharField(max_length=255, verbose_name='Longitude', null=True, blank=True)
     address = models.CharField(max_length=255, verbose_name='Address', null=True, blank=True)

@@ -39,7 +39,7 @@ class PendingProviderSerializer(serializers.ModelSerializer):
 class CustomerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customer
-        fields = ['id','email','name', 'phone']
+        fields = ['id','image','email','name', 'phone']
 
 
 class CustomerCreateAccountSerializer(serializers.ModelSerializer):

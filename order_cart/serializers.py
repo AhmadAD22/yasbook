@@ -36,11 +36,13 @@ class ProductOrderSerializer(serializers.ModelSerializer):
     price_with_coupon = serializers.SerializerMethodField()
     store_name = serializers.SerializerMethodField()
     coupon=serializers.CharField(source='coupon.name', read_only=True)
+    customer=CustomerSerializer()
 
     class Meta:
         model = ProductOrder
         fields = (
             'id',
+            'customer',
             'product',
             'quantity',
             'date',
@@ -49,6 +51,7 @@ class ProductOrderSerializer(serializers.ModelSerializer):
             'price_with_coupon',
             'store_name',
             'status',
+            'qr_code',
         )
         
         read_only_fields = ('price', 'price_with_coupon')
@@ -135,6 +138,7 @@ class ServiceBookOrderSerializer(serializers.ModelSerializer):
     main_service=serializers.CharField(source='service.main_service', read_only=True)
     store_name = serializers.SerializerMethodField()
     store_image = serializers.SerializerMethodField()
+    
    
     def get_store_name(self, obj):
         return obj.service.store.name if obj.service.store else None

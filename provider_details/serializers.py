@@ -218,8 +218,19 @@ class ServiceASerializer(serializers.ModelSerializer):
     class Meta:
         model = Service
         exclude = ['store']
+        
+from client.models import *
 
 class ProductASerializer(serializers.ModelSerializer):
+    favorate=serializers.SerializerMethodField()
+    def get_favorate(self, obj):
+        user = self.context['request'].user
+        
+        try:
+            favorate_service = FavorateProduct.objects.get(product=obj, customer__phone=user.phone)
+            return True
+        except FavorateProduct.DoesNotExist:
+            return False
     class Meta:
         model = Product
         exclude = ['store']

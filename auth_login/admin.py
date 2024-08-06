@@ -10,19 +10,9 @@ from django.utils.html import format_html
 from provider_details.models import Store
 
 
-class CustomerAdmin(UserAdmin):
-    list_display = ('name','username', 'phone', 'address')
-    list_filter = ('is_active', 'is_staff')
-    search_fields = ('name', 'phone', 'address')
-    readonly_fields = ('latitude','longitude')
-    fieldsets = (
-        (None, {'fields': ('name', 'password')}),
-        ('Permissions', {'fields': ('is_active',)}),
-        ('Contact Information', {'fields': ('phone', 'address')}),
-        ('Location', {'fields': ('latitude', 'longitude')}),
-    )
 
-admin.site.register(Customer, CustomerAdmin)
+
+admin.site.register(Customer)
 
 
 class ProviderAdmin(UserAdmin):

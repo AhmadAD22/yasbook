@@ -177,7 +177,7 @@ class ServiceOrderDetails(APIView):
             service_order = ServiceOrder.objects.get(pk=pk)
         except ServiceOrder.DoesNotExist:
             return Response({'error': 'Service order not found.'}, status=status.HTTP_404_NOT_FOUND)
-        serializer=UncheckedServiceOrderSerializer(service_order)
+        serializer=ServiceBookOrderSerializer(service_order)
         return Response(serializer.data,status=status.HTTP_200_OK)
         
 class ServiceOrderListView(generics.ListAPIView):

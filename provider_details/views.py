@@ -551,7 +551,7 @@ class FeaturedStoreNearbyStoreOrderAndStoryView(APIView):
                 provider_subscripted_ids.append(subscription.provider.id)
         subscripted_stores=Store.objects.filter(provider__id__in=provider_subscripted_ids).values_list('id', flat=True)
         promotion=PromotionSubscription.objects.all()
-        promotion_serializer=PromotionSubscriptionSerializer(many=True)
+        promotion_serializer=PromotionSubscriptionSerializer(promotion,many=True)
         # Get the most ordered services for the customer
         most_ordered_services = ServiceOrder.objects\
                                   .values('service')\

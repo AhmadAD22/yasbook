@@ -56,8 +56,10 @@ class ProductOrder(models.Model):
     collected = models.BooleanField(default=False, verbose_name='تم تحصيلها', null=True, blank=True)
     date= models.DateTimeField(auto_now_add=True, verbose_name='تاريخ الإنشاء',blank=True,null=True)
     coupon=models.ForeignKey(Coupon, on_delete=models.SET_NULL,null=True,blank=True)
+    qr_code = models.ImageField(upload_to="media/order/qr_code", null=True, blank=True)
     def total_price(self):
         return self.quantity * self.product.price_after_offer
+    
     def price_with_coupon(self):
         price = self.total_price()
         if self.coupon:
@@ -98,11 +100,6 @@ class ServiceOrder(models.Model):
             price = price - (price * coupon_percent)
             return price
         return price
-
-    
-        
-    
-    
 
     def __str__(self):   
         return self.service.name

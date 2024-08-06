@@ -156,11 +156,11 @@ class StoreADetailSerializer(serializers.ModelSerializer):
 
     def get_services(self, obj):
         # Customize the serialization of 'services' field here
-        return ServiceSerializer(obj.service_set.all(), many=True).data
+        return ServiceSerializer(obj.service_set.all(), many=True,context={'request': self.context['request']}).data
 
     def get_products(self, obj):
         # Customize the serialization of 'products' field here
-        return ProductSerializer(obj.product_set.all(), many=True).data
+        return ProductSerializer(obj.product_set.all(), many=True,context={'request': self.context['request']}).data
 
     def get_reviews(self, obj):
         reviews_data = ReviewsSerializer(obj.reviews_set.all(), many=True).data
