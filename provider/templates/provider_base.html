@@ -25,12 +25,14 @@
             <!-- Sidebar -->
             <nav id="sidebarMenu" class="col-md-3 d-md-block navbar-expand-lg sidebar">
                 <div class="sidebar-sticky">
-                    <h4 class="text-center text-primary m-3">DropX</h4>
+                    <h4 class="text-center text-primary m-3">YasBook</h4>
                     <ul class="nav flex-column text-right">
                         <li class="nav-item">
                             <a class="nav-link collapsed" data-toggle="collapse" href="#collapse-myaccount" aria-expanded="false" aria-controls="collapse-myaccount">
                                 <img class="rounded-circle shadow-4-strong" width="25" height="25" alt="avatar2" src="https://mdbcdn.b-cdn.net/img/new/avatars/1.webp" />
-
+                                {% if request.user.is_authenticated %}
+                                  {{ request.user.name }}
+                               {% endif %}
                             </a>
                             <div class="collapse" id="collapse-myaccount">
                                 <ul class="nav flex-column">
@@ -44,48 +46,52 @@
                             </div>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {% block main_dashboard %}{% endblock main_dashboard %}" href="{% url "main_dashboard" %}">لوحة التحكم</a>
+                            <a class="nav-link {% block main_dashboard %}{% endblock main_dashboard %}" href="{% url "provider-main-dashboard" %}">لوحة التحكم</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link collapsed" data-toggle="collapse" href="#collapse-subscription" aria-expanded="false" aria-controls="collapse-subscription">طلبات الإشتراك</a>
+                            <a class="nav-link collapsed" data-toggle="collapse" href="#collapse-subscription" aria-expanded="false" aria-controls="collapse-subscription">الحجوزات</a>
                             <div class="collapse" id="collapse-subscription">
                                 <ul class="nav flex-column">
                                     <li class="nav-item">
-                                        <a class="nav-link" href="#">مطاعم</a>
+                                        <a class="nav-link" href="#">منتجات</a>
                                     </li>
                                     <li class="nav-item">
-                                        <a class="nav-link" href="#">مندوبين</a>
+                                        <a class="nav-link" href="#">خدمات</a>
                                     </li>
                                 </ul>
                             </div>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link collapsed {% block users %}{% endblock users %}" data-toggle="collapse" href="#collapse-users" aria-expanded="false" aria-controls="collapse-users"> المستخدمين</a>
+                            <a class="nav-link collapsed {% block store %}{% endblock store %}" data-toggle="collapse" href="#collapse-users" aria-expanded="false" aria-controls="collapse-users">المتجر</a>
                             <div class="collapse" id="collapse-users">
                                 <ul class="nav flex-column">
                                     <li class="nav-item">
-                                        <a class="nav-link" href="#">مطاعم</a>
+                                        <a class="nav-link" href="#">إعدادات</a>
                                     </li>
                                     <li class="nav-item">
-                                        <a class="nav-link" href="#">مندوبين</a>
+                                        <a class="nav-link {% block specialists %}{% endblock %}" href="{% url "store-specialist-list" %}">الأخصائيين</a>
                                     </li>
                                     <li class="nav-item">
-                                        <a class="nav-link {% block clients %}{% endblock clients %}" href="#">الزبائن</a>
+                                        <a class="nav-link" href="#">الأسئلة </a>
+                                    </li>
+                                    
+                                    <li class="nav-item">
+                                        <a class="nav-link {% block clients %}{% endblock clients %}" href="#">أوقات العمل</a>
                                     </li>
                                 </ul>
                             </div>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {% block categories %}{% endblock categories %}" href="#">التصنيفات</a>
+                            <a class="nav-link {% block products %}{% endblock products %}" href="{% url "provider-product_list" %}">المنتجات</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="#">العروض</a>
+                            <a class="nav-link {% block services %}{% endblock %}" href="{% url "provider-service_list" %}">الخدمات</a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="#">الأسئلة والأجوبة</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="#">كوبونات الخصم</a>
+                            <a class="nav-link {% block coupons %}{% endblock coupons %}" href="{% url "provider-coupon_list" %}">كوبونات الخصم</a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="#">عمولة التطبيق</a>

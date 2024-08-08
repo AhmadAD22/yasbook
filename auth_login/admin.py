@@ -10,41 +10,13 @@ from django.utils.html import format_html
 from provider_details.models import Store
 
 
+admin.site.register(MyUser)
 
 
 admin.site.register(Customer)
 
 
-class ProviderAdmin(UserAdmin):
-    list_display = ('name', 'category', 'phone', 'address')
-    list_filter = ('is_active', 'is_staff', 'category')
-    search_fields = ('name', 'phone', 'address')
-    readonly_fields = ('latitude','longitude','store_name')
-
-    fieldsets = (
-        (None, {'fields': ('name', 'password')}),
-        ('Permissions', {'fields': ('is_active',)}),
-        ('Contact Information', {'fields': ('phone', 'address')}),
-        ('Location', {'fields': ('latitude', 'longitude')}),
-        ('Category', {'fields': ('category',)}),
-        ('Store', {'fields': ('store_name',)}),
-    )
-    def store_name(self, obj):
-        if obj:
-            store=Store.objects.get(provider=obj.id)
-            store_url = reverse('admin:provider_details_store_change', args=[store.id])
-            return format_html('<a href="{}">{}</a>', store_url, store.name)
-        return "N/A"
-    store_name.short_description = 'Store Name'
-
-    def store_link(self, obj):
-        if obj:
-            store=Store.objects.get(provider=obj.id)
-            store_url = reverse('admin:provider_details_store_change', args=[store.id])
-            return format_html('<a href="{}">{}</a>', store_url, store.name)
-        return "N/A"
-    store_link.short_description = 'Store Link'
-admin.site.register(Provider, ProviderAdmin)
+admin.site.register(Provider)
 
 
 class AdminUserAdmin(UserAdmin):

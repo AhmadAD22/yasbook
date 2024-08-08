@@ -25,7 +25,7 @@ class ProductOrderFollow(APIView):
             product_order = ProductOrder.objects.get(pk=pk)
         except ProductOrder.DoesNotExist:
             return Response({'error': 'Product order not found.'}, status=status.HTTP_404_NOT_FOUND)
-        return Response ({'id':product_order.id,'status':product_order.status})
+        return Response ({'id':product_order.id,'status':product_order.status,'date':product_order.date})
 
 
 
@@ -215,7 +215,7 @@ class ServiceOrderFollow(APIView):
             service_order = ServiceOrder.objects.get(pk=pk)
         except ServiceOrder.DoesNotExist:
             return Response({'error': 'Service order not found.'}, status=status.HTTP_404_NOT_FOUND)
-        return Response ({'id':service_order.id,'status':service_order.status})
+        return Response ({'id':service_order.id,'status':service_order.status,'date':service_order.date,"time":service_order.time_start})
 
     
 class CurrentOrderCustomerListView(APIView):

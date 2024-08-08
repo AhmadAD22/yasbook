@@ -56,6 +56,8 @@ class StoreSpecialist(models.Model):
 
         # Call the delete method of the base class to perform the deletion
         super(StoreSpecialist, self).delete(*args, **kwargs)
+    def __str__(self) -> str:
+        return '#'+str(self.id)+' '+self.name
     
 
     

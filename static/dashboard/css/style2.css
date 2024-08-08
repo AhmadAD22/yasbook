@@ -282,3 +282,8 @@
   .btn-danger.delete-btn:active {
     transform: scale(0.8);
   }
+
+
+  .clickable-row:hover {
+    cursor: hand;
+  }

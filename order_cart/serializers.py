@@ -36,7 +36,7 @@ class ProductOrderSerializer(serializers.ModelSerializer):
     price_with_coupon = serializers.SerializerMethodField()
     store_name = serializers.SerializerMethodField()
     coupon=serializers.CharField(source='coupon.name', read_only=True)
-    customer=CustomerSerializer()
+    customer=CustomerSerializer(read_only=True)
 
     class Meta:
         model = ProductOrder
@@ -54,7 +54,7 @@ class ProductOrderSerializer(serializers.ModelSerializer):
             'qr_code',
         )
         
-        read_only_fields = ('price', 'price_with_coupon')
+        read_only_fields = ('price', 'price_with_coupon','status')
     def get_store_name(self, obj):
         return obj.product.store.name if obj.product.store else None
 

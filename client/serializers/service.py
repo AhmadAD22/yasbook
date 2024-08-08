@@ -35,7 +35,7 @@ class ServiceListSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Service
-        fields = ['id','image','name','price','price_after_offer','main_service','store','favorate']
+        fields = ['id','image','name','price','price_after_offer','duration','main_service','store','favorate']
         
     def get_price_after_offer(self, obj):
             if obj.offers is not None:
