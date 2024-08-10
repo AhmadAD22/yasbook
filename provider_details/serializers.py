@@ -220,8 +220,9 @@ class ServiceASerializer(serializers.ModelSerializer):
         exclude = ['store']
         
 from client.models import *
-
+from client.serializers.service import StoreForServiceListSerializer
 class ProductASerializer(serializers.ModelSerializer):
+    store=StoreForServiceListSerializer(read_only=True)
     favorate=serializers.SerializerMethodField()
     def get_favorate(self, obj):
         user = self.context['request'].user
@@ -233,7 +234,7 @@ class ProductASerializer(serializers.ModelSerializer):
             return False
     class Meta:
         model = Product
-        exclude = ['store']
+        fields='__all__'
 
 class ReviewsStorSerializer(serializers.ModelSerializer):
     customer=CustomerSerializer()

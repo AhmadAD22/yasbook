@@ -63,8 +63,17 @@ class StoreSpecialist(models.Model):
     
 
 class StoreOpening(models.Model):
+    day_choices = (
+            ('monday', 'Monday'),
+            ('tuesday', 'Tuesday'),
+            ('wednesday', 'Wednesday'),
+            ('thursday', 'Thursday'),
+            ('friday', 'Friday'),
+            ('saturday', 'Saturday'),
+            ('sunday', 'Sunday')
+        )
     store = models.ForeignKey(Store, on_delete=models.CASCADE)
-    day = models.CharField(max_length=255, verbose_name='اليوم',)
+    day = models.CharField(max_length=15,choices=day_choices, verbose_name='اليوم',)
     time_start=models.TimeField(verbose_name='وقت البدء')
     time_end=models.TimeField(verbose_name='وقت الانتهاء')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاريخ الإنشاء',blank=True,null=True)
@@ -155,6 +164,8 @@ class Product(models.Model):
                 os.remove(self.image.path)
         
         super(Product, self).delete(*args, **kwargs)
+    def __str__(self) -> str:
+        return self.name
 
 
 class Reviews(models.Model):

@@ -287,3 +287,7 @@
   .clickable-row:hover {
     cursor: hand;
   }
+
+  strong{
+    color: #a5a59ff3;
+  }

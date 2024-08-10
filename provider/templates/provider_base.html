@@ -27,8 +27,8 @@
                 <div class="sidebar-sticky">
                     <h4 class="text-center text-primary m-3">YasBook</h4>
                     <ul class="nav flex-column text-right">
-                        <li class="nav-item">
-                            <a class="nav-link collapsed" data-toggle="collapse" href="#collapse-myaccount" aria-expanded="false" aria-controls="collapse-myaccount">
+                        <li class="nav-item m-1">
+                            <a class="nav-link m-1 collapsed" data-toggle="collapse" href="#collapse-myaccount" aria-expanded="false" aria-controls="collapse-myaccount">
                                 <img class="rounded-circle shadow-4-strong" width="25" height="25" alt="avatar2" src="https://mdbcdn.b-cdn.net/img/new/avatars/1.webp" />
                                 {% if request.user.is_authenticated %}
                                   {{ request.user.name }}
@@ -36,71 +36,80 @@
                             </a>
                             <div class="collapse" id="collapse-myaccount">
                                 <ul class="nav flex-column">
-                                    <li class="nav-item">
-                                        <a class="nav-link" href="#">الملف الشخصي</a>
+                                    <li class="nav-item m-1">
+                                        <a class="nav-link" href="#">Profile</a>
                                     </li>
-                                    <li class="nav-item">
-                                        <a class="nav-link" href="#">تسجيل خروج</a>
+                                    <li class="nav-item m-1">
+                                        <a class="nav-link" href="{% url "provider-logout" %}">Logout</a>
                                     </li>
                                 </ul>
                             </div>
                         </li>
-                        <li class="nav-item">
+                        <li class="nav-item m-1">
                             <a class="nav-link {% block main_dashboard %}{% endblock main_dashboard %}" href="{% url "provider-main-dashboard" %}">لوحة التحكم</a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link collapsed" data-toggle="collapse" href="#collapse-subscription" aria-expanded="false" aria-controls="collapse-subscription">الحجوزات</a>
+                        <li class="nav-item m-1">
+                            <a class="nav-link {% block orders %}{% endblock orders %} collapsed" data-toggle="collapse" href="#collapse-subscription" aria-expanded="false" aria-controls="collapse-subscription">الحجوزات</a>
                             <div class="collapse" id="collapse-subscription">
                                 <ul class="nav flex-column">
                                     <li class="nav-item">
-                                        <a class="nav-link" href="#">منتجات</a>
+                                        <a class="nav-link m-1 {% block service_order %}{% endblock service_order %}" href="{% url "provider-service-orders" %}">خدمات</a>
                                     </li>
                                     <li class="nav-item">
-                                        <a class="nav-link" href="#">خدمات</a>
+                                        <a class="nav-link" href="{% url "provider-product-orders" %}">منتجات</a>
                                     </li>
                                 </ul>
                             </div>
                         </li>
-                        <li class="nav-item">
+                        <li class="nav-item m-1">
                             <a class="nav-link collapsed {% block store %}{% endblock store %}" data-toggle="collapse" href="#collapse-users" aria-expanded="false" aria-controls="collapse-users">المتجر</a>
                             <div class="collapse" id="collapse-users">
                                 <ul class="nav flex-column">
                                     <li class="nav-item">
-                                        <a class="nav-link" href="#">إعدادات</a>
+                                        <a class="nav-link m-1 {% block settings %}{% endblock %}" href="{% url "store_update-settings" %}">إعدادات</a>
                                     </li>
-                                    <li class="nav-item">
+                                    <li class="nav-item m-1">
                                         <a class="nav-link {% block specialists %}{% endblock %}" href="{% url "store-specialist-list" %}">الأخصائيين</a>
                                     </li>
                                     <li class="nav-item">
-                                        <a class="nav-link" href="#">الأسئلة </a>
+                                        <a class="nav-link {% block questions %} {% endblock %}" href="{% url "common_question_list" %}">الأسئلة </a>
                                     </li>
                                     
-                                    <li class="nav-item">
-                                        <a class="nav-link {% block clients %}{% endblock clients %}" href="#">أوقات العمل</a>
+                                    <li class="nav-item m-1">
+                                        <a class="nav-link {% block store_openings %}{% endblock store_openings %}" href="{% url "store_opening_list" %}">الإفتتاح</a>
                                     </li>
                                 </ul>
                             </div>
                         </li>
-                        <li class="nav-item">
+                        <li class="nav-item m-1">
                             <a class="nav-link {% block products %}{% endblock products %}" href="{% url "provider-product_list" %}">المنتجات</a>
                         </li>
-                        <li class="nav-item">
+                        <li class="nav-item m-1">
                             <a class="nav-link {% block services %}{% endblock %}" href="{% url "provider-service_list" %}">الخدمات</a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#">الأسئلة والأجوبة</a>
-                        </li>
-                        <li class="nav-item">
+                        
+                        <li class="nav-item m-1">
                             <a class="nav-link {% block coupons %}{% endblock coupons %}" href="{% url "provider-coupon_list" %}">كوبونات الخصم</a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#">عمولة التطبيق</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#">الأرباح</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#">الدعم</a>
+                        <li class="nav-item m-1">
+                            <a class="nav-link {% block reports %}{% endblock reports %} collapsed" data-toggle="collapse" href="#collapse-report" aria-expanded="false" aria-controls="collapse-report">التقارير</a>
+                            <div class="collapse" id="collapse-report">
+                                <ul class="nav flex-column">
+                                    <li class="nav-item">
+                                        <a class="nav-link m-1 {% block service_report %}{% endblock service_report %}" href="{% url "service_order_report" %}">خدمات</a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link {% block product_reports %}{% endblock product_reports %}" href="{% url "product_order_report" %}">منتجات</a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link {% block specialist_report %}{% endblock specialist_report %}" href="{% url "specialist_order_report" %}">أخصائيين</a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link {% block warehouse_report %}{% endblock warehouse_report %}" href="{% url "warehouse_report" %}">المخزن</a>
+                                    </li>
+                                    
+                                </ul>
+                            </div>
                         </li>
                         
                         

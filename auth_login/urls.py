@@ -12,6 +12,7 @@ urlpatterns = [
     path('customer-login', CustomerAuthToken.as_view()),
     path('customer-set-address', CustomerAddressRetrieveUpdateDestroyAPIView.as_view(), name='customer-addresses-list-create'),
     path('customer-password-update', CustomerPasswordUpdateAPIView.as_view(), name='customer-password-update'),
+    path('customers/<int:pk>/update/', CustomerUpdateAPIView.as_view(), name='customer-update'),
     ### end customer
 
 

@@ -18,8 +18,12 @@ from rest_framework.response import Response
 from auth_login.serializers import PromotionSubscriptionSerializer
 from client.serializers.service import ServiceListSerializer
 from django.utils import timezone
+from rest_framework.authentication import TokenAuthentication, SessionAuthentication
+
 
 class ServiceOrderReportAPIView(APIView):
+    permission_classes=[IsAuthenticated]
+    authentication_classes=[TokenAuthentication,SessionAuthentication]
     def get(self, request):
         provider = Provider.objects.get(phone=request.user.phone)
         
@@ -58,6 +62,8 @@ class ServiceOrderReportAPIView(APIView):
         return Response(context)
     
 class SpecialistServiceOrderReportAPIView(APIView):
+    permission_classes=[IsAuthenticated]
+    authentication_classes=[TokenAuthentication,SessionAuthentication]
     def get(self, request):
         provider = Provider.objects.get(phone=request.user.phone)
         
@@ -93,6 +99,8 @@ class SpecialistServiceOrderReportAPIView(APIView):
         return Response(context)
 
 class ProductOrderReportAPIView(APIView):
+    permission_classes=[IsAuthenticated]
+    authentication_classes=[TokenAuthentication,SessionAuthentication]
     def get(self, request):
         provider = Provider.objects.get(phone=request.user.phone)
         
@@ -133,6 +141,8 @@ class ProductOrderReportAPIView(APIView):
         return Response(context)
 
 class warehouseReportAPIView(APIView):
+    permission_classes=[IsAuthenticated]
+    authentication_classes=[TokenAuthentication,SessionAuthentication]  
     def get(self, request):
         provider = Provider.objects.get(phone=request.user.phone)
         

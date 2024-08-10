@@ -4,6 +4,7 @@ from django import forms
 from django import forms
 
 class StoreSpecialistForm(forms.ModelForm):
+    
     class Meta:
         model = StoreSpecialist
         fields = ( 'name', 'phone', 'image')

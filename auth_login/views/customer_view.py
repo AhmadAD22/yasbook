@@ -188,3 +188,12 @@ class CustomerAddressRetrieveUpdateDestroyAPIView(generics.UpdateAPIView):
     def get_object(self):
         customer = Customer.objects.get(pk=self.request.user.id)
         return customer
+    
+class CustomerUpdateAPIView(APIView):
+    def put(self, request, pk):
+        customer = Customer.objects.get(pk=self.request.user.id)
+        serializer = CustomerUpdateSerializer(customer, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

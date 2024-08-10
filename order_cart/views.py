@@ -16,6 +16,7 @@ from django.db.models import Sum
 from decimal import Decimal
 from rest_framework.exceptions import NotFound
 from django.db.models import Q
+from rest_framework.authentication import TokenAuthentication, SessionAuthentication
 
 ######Product Order Views
 class ProductOrderFollow(APIView):
@@ -25,7 +26,7 @@ class ProductOrderFollow(APIView):
             product_order = ProductOrder.objects.get(pk=pk)
         except ProductOrder.DoesNotExist:
             return Response({'error': 'Product order not found.'}, status=status.HTTP_404_NOT_FOUND)
-        return Response ({'id':product_order.id,'status':product_order.status,'date':product_order.date})
+        return Response ({'id':product_order.id,'status':product_order.status,'date':product_order.date,'store_id':product_order.product.store.id})
 
 
 
@@ -215,7 +216,7 @@ class ServiceOrderFollow(APIView):
             service_order = ServiceOrder.objects.get(pk=pk)
         except ServiceOrder.DoesNotExist:
             return Response({'error': 'Service order not found.'}, status=status.HTTP_404_NOT_FOUND)
-        return Response ({'id':service_order.id,'status':service_order.status,'date':service_order.date,"time":service_order.time_start})
+        return Response ({'id':service_order.id,'status':service_order.status,'date':service_order.date,"time":service_order.time_start,'store_id':service_order.service.store.id})
 
     
 class CurrentOrderCustomerListView(APIView):
@@ -269,7 +270,7 @@ class PreviousOrderCustomerListView(APIView):
 ### provider
 
 class CurrentServiceOrderProviderListView(APIView):
-    # serializer_class = ServiceOrderProviderSerializer
+    authentication_classes = [TokenAuthentication, SessionAuthentication]
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, format=None):

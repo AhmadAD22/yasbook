@@ -40,6 +40,11 @@ class CustomerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customer
         fields = ['id','image','email','name', 'phone']
+        
+class CustomerUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Customer
+        fields = ['id','image','email','name',]
 
 
 class CustomerCreateAccountSerializer(serializers.ModelSerializer):

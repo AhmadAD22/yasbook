@@ -1,6 +1,6 @@
 {% extends '../../provider_base.html' %}
 
-{% block title %} update specialist {% endblock %}
+{% block title %} Update Specialist {% endblock %}
 
 {% block css_style %}
 
@@ -9,7 +9,7 @@
 {% block specialists %}active{% endblock %}
 {% block breadcrumbt %}
     <li class="breadcrumb-item "><a class="text-light" href="{% url "provider-main-dashboard" %}">Dashboard</a></li>
-    <li class="breadcrumb-item"><a class="text-light" href="{% url "store-specialist-list" %}">specialists</a></li>
+    <li class="breadcrumb-item"><a class="text-light" href="{% url "store-specialist-list" %}">Specialists</a></li>
     <li class="breadcrumb-item active" aria-current="page"><a class="text-primary" href="{% url "store-specialist-update" specialist.id %}">{{ form.name.value }}</a></li>
 {% endblock breadcrumbt %}
 {% block content %}

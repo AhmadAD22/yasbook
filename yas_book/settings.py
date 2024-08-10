@@ -66,7 +66,11 @@ INSTALLED_APPS = [
 
 
 ]
-
+DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+FILE_UPLOAD_HANDLERS = [
+    "django.core.files.uploadhandler.MemoryFileUploadHandler",
+    "django.core.files.uploadhandler.TemporaryFileUploadHandler",
+]
 ASGI_APPLICATION='yas_book.asgi.application'
 CHANNEL_LAYERS = {
     'default': {

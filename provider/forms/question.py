@@ -3,7 +3,7 @@ from django import forms
 
 from django import forms
 
-class StoreSpecialistForm(forms.ModelForm):
+class StoreQuestionForm(forms.ModelForm):
     class Meta:
         model = CommonQuestion
         fields = ( 'question', 'answer')

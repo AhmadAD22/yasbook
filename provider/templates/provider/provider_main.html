@@ -1,43 +1,46 @@
 {% extends "../provider_base.html" %}
 {% load static %}
-
+{% block breadcrumbt %}
+    <li class="breadcrumb-item active "><a a class="text-primary" href="{% url "provider-main-dashboard" %}">Dashboard</a></li>
+{% endblock breadcrumbt %}
+{% block main_dashboard %}active{% endblock main_dashboard %}
 {% block title %} Main {% endblock %}
 
 {% block content %}
 <div class="row text-center m-0">
     <div class="col-md-4 mb-4 ">
         <div class="content animate__animated animate__fadeInUp">
-            <h5>جميع المندوبين</h5>
+            <h5> الخدمات</h5>
             <p>{{driver_count}}</p>
         </div>
     </div>
     <div class="col-md-4 mb-4">
         <div class="content animate__animated animate__fadeInUp">
-            <h5>جميع المطاعم</h5>
+            <h5> المنتجات</h5>
             <p>{{restaurant_count}}</p>
         </div>
     </div>
     <div class="col-md-4 mb-4">
         <div class="content animate__animated animate__fadeInUp">
-            <h5>جميع المستخدمين</h5>
+            <h5> الأخصائيين</h5>
             <p>{{client_count}}</p>
         </div>
     </div>
     <div class="col-md-4 mb-4">
         <div class="content animate__animated animate__fadeInUp">
-            <h5>جميع التصنيفات</h5>
+            <h5> الطلبات المكتملة</h5>
             <p>{{category_count}}</p>
         </div>
     </div>
     <div class="col-md-4 mb-4">
         <div class="content animate__animated animate__fadeInUp">
-            <h5>المدفوعات</h5>
+            <h5> الطلبات الجارية</h5>
             <p>20</p>
         </div>
     </div>
     <div class="col-md-4 mb-4">
         <div class="content animate__animated animate__fadeInUp">
-            <h5>الأرباح</h5>
+            <h5>الإشتراك</h5>
             <p>20</p>
         </div>
     </div>
@@ -61,6 +64,6 @@
 </main>
 </div>
 </div>
+
+
 {% endblock %}
-
-

@@ -187,6 +187,7 @@ admin.site.register(StoreGallery)
 admin.site.register(StoreAdminServices)
 admin.site.register(FollowingStore)
 admin.site.register(Coupon)
+admin.site.register(CommonQuestion)
 
 
 

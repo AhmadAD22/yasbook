@@ -5,9 +5,17 @@ from .views.products import *
 from .views.service import *
 from .views.coupon import *
 from .views.specialist import *
-
+from .views.question import *
+from .views.opening import *
+from .views.store import *
+from .views.service_order import *
+from .views.product_order import *
+from .views.reports import *
 urlpatterns = [
     path('login',login_view,name="provider-login"),
+    path('logout',provider_logout_view,name="provider-logout"),
+    path('provider_signup/', provider_signup, name='provider_signup'),
+    
     path('',provider_main_dashboard,name="provider-main-dashboard"),
     # Products
     path('product/create/', create_product, name='provider-create_product'),
@@ -29,4 +37,38 @@ urlpatterns = [
     path('specialists/create/',store_specialist_create, name='store-specialist-create'),
     path('specialists/<int:pk>/update/', store_specialist_update, name='store-specialist-update'),
     path('specialists/<int:pk>/delete/',store_specialist_delete, name='store-specialist-delete'),
+    
+    path('common-questions/', common_question_list, name='common_question_list'),
+    path('common-questions/create/', common_question_create, name='common_question_create'),
+    path('common-questions/<int:question_id>/edit/',common_question_edit, name='common_question_edit'),
+    path('common-questions/<int:question_id>/delete/',common_question_delete, name='common_question_delete'),
+    
+    path('store-openings/', store_opening_list, name='store_opening_list'),
+    path('store-openings/create/', store_opening_create, name='store_opening_create'),
+    path('store-openings/<int:opening_id>/edit/', store_opening_edit, name='store_opening_edit'),
+    path('store-openings/<int:opening_id>/delete/', store_opening_delete, name='store_opening_delete'),
+    
+    path('store-settings/',store_update_view, name='store_update-settings'),
+    
+    
+     path('service-orders/',service_orders_view, name='provider-service-orders'),
+     path('service-orders/<int:id>',service_order_details, name='provider-service-orders-details'),
+     path('service-orders/<int:id>/accept',accept_service_order, name='accept_service_order'),
+     path('service-orders/<int:id>/reject',reject_service_order, name='reject_service_order'),
+     path('service-orders/<int:id>/compalte',complate_service_order, name='compalte_service_order'),
+     
+    path('product-orders/', product_orders_view, name='provider-product-orders'),
+    path('product-orders/<int:id>/', product_order_details, name='productorder-details'),
+    path('product-orders/<int:id>/accept/', accept_product_order, name='accept-product-order'),
+    path('product-orders/<int:id>/reject/', reject_product_order, name='reject-product-order'),
+    path('product-orders/<int:id>/complate/', complate_product_order, name='complate-product-order'),
+    
+    path('report/service',service_order_report,name="service_order_report"),
+    path('report/product',product_order_report,name="product_order_report"),
+    path('report/specialist',specialist_order_report,name="specialist_order_report"),
+    path('report/warehouse',warehouse_order_report,name="warehouse_report"),
+    
+    
+    
+    
              ]   
