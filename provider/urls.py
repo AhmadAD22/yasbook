@@ -11,10 +11,16 @@ from .views.store import *
 from .views.service_order import *
 from .views.product_order import *
 from .views.reports import *
+from .views.profile import *
 urlpatterns = [
     path('login',login_view,name="provider-login"),
     path('logout',provider_logout_view,name="provider-logout"),
     path('provider_signup/', provider_signup, name='provider_signup'),
+    path('update/', provider_update, name='provider_update'),
+    path('profile/', provider_profile, name='provider_profile'),
+    path('password-send-otp/<int:phone>', provider_send_otp, name='provider_send_otp'),
+    path('password-verify-otp/<int:phone>', provider_verify_otp, name='provider_verify_otp'),
+    path('reset-forgotten-password/<int:phone>', reset_forgotten_password, name='reset_forgotten_password'),
     
     path('',provider_main_dashboard,name="provider-main-dashboard"),
     # Products
